@@ -1,0 +1,42 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": [
+        "src/index.ts"
+    ],
+    "out": "docs",
+    "name": "Sequential Thinking Service Documentation",
+    "includeVersion": true,
+    "excludePrivate": false,
+    "excludeProtected": false,
+    "excludeExternals": true,
+    "readme": "README.md",
+    "plugin": [
+        "typedoc-plugin-markdown"
+    ],
+    "theme": "default",
+    "categorizeByGroup": true,
+    "categoryOrder": [
+        "Core",
+        "Configuration",
+        "Processing",
+        "Metrics",
+        "Utilities",
+        "*"
+    ],
+    "searchInComments": true,
+    "sort": [
+        "source-order",
+        "required-first",
+        "alphabetical"
+    ],
+    "validation": {
+        "invalidLink": true,
+        "notExported": true
+    },
+    "visibilityFilters": {
+        "protected": true,
+        "private": true,
+        "inherited": true,
+        "external": false
+    }
+}

@@ -20,9 +20,9 @@ export const DEFAULT_ENHANCEMENT_CONFIG: EnhancementConfig = {
 };
 
 export const DEFAULT_DEBUG_CONFIG: DebugConfig = {
-    errorCapture: true,
-    metricTracking: true,
-    performanceMonitoring: true
+    errorCapture: false,
+    metricTracking: false,
+    performanceMonitoring: false
 };
 
 export class SequentialThinkingService {

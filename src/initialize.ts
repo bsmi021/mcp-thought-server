@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerTools } from "./tools/index.js";
+import { registerThinkingTool } from "./tools/index.js";
 import { logger } from "./utils/index.js";
 import { SequentialThinkingService } from "./services/index.js";
 
@@ -29,7 +29,7 @@ export const createServer = (): McpServer => {
     }
 
     // register tools
-    registerTools(server, sequentialThinkingService);
+    registerThinkingTool(server);
 
     return server;
 }

@@ -1,15 +1,6 @@
 import { z } from "zod";
-interface ThoughtData {
-    thought: string;
-    thoughtNumber: number;
-    totalThoughts: number;
-    isRevision?: boolean;
-    revisesThought?: number;
-    branchFromThought?: number;
-    branchId?: string;
-    needsMoreThoughts?: boolean;
-    nextThoughtNeeded: boolean;
-}
+import { CoreConfig, EnhancementConfig, DebugConfig } from "../types/index.js";
+
 
 export const TOOL_NAME = "sequentialThinking";
 
@@ -23,79 +14,89 @@ export const TOOL_NAME = "sequentialThinking";
 * Changes in approach
 * Hypothesis generation
 * Hypothesis verification
-- next_thought_needed: True if you need more thinking, even if at what seemed like the end
-- thought_number: Current number in sequence (can go beyond initial total if needed)
-- total_thoughts: Current estimate of thoughts needed (can be adjusted up/down)
-- is_revision: A boolean indicating if this thought revises previous thinking
-- revises_thought: If is_revision is true, which thought number is being reconsidered
-- branch_from_thought: If branching, which thought number is the branching point
-- branch_id: Identifier for the current branch (if any)
-- needs_more_thoughts: If reaching end but realizing more thoughts needed
+- nextThoughtNeeded: True if you need more thinking, even if at what seemed like the end
+- thoughtNumber: Current number in sequence (can go beyond initial total if needed)
+- totalThoughts: Current estimate of thoughts needed (can be adjusted up/down)
+- isRevision: A boolean indicating if this thought revises previous thinking
+- revisesThought: If isRevision is true, which thought number is being reconsidered
+- branchFromThought: If branching, which thought number is the branching point
+- branchId: Identifier for the current branch (if any)
+- needsMoreThoughts: If reaching end but realizing more thoughts needed
 */
 
+// Enhanced tool parameters schema
 export const TOOL_PARAMS = {
     thought: z.string().describe("Your current thinking step, which can include: * Regular analytical steps * Revisions of previous thoughts * Questions about previous decisions * Realizations about needing more analysis * Changes in approach * Hypothesis generation * Hypothesis verification"),
-    next_thought_needed: z.boolean().describe("True if you need more thinking, even if at what seemed like the end"),
-    thought_number: z.number().min(1).describe("Current number in sequence (can go beyond initial total if needed)"),
-    total_thoughts: z.number().min(1).describe("Current estimate of thoughts needed (can be adjusted up/down)"),
-    is_revision: z.boolean().describe("A boolean indicating if this thought revises previous thinking").optional(),
-    revises_thought: z.number().min(1).describe("If is_revision is true, which thought number is being reconsidered").optional(),
-    branch_from_thought: z.number().min(1).describe("If branching, which thought number is the branching point").optional(),
-    branch_id: z.string().describe("Identifier for the current branch (if any)").optional(),
-    needs_more_thoughts: z.boolean().describe("If reaching end but realizing more thoughts needed").optional(),
+    nextThoughtNeeded: z.boolean().describe("True if you need more thinking, even if at what seemed like the end"),
+    thoughtNumber: z.number().min(1).describe("Current number in sequence (can go beyond initial total if needed)"),
+    totalThoughts: z.number().min(1).describe("Current estimate of thoughts needed (can be adjusted up/down)"),
+    isRevision: z.boolean().describe("A boolean indicating if this thought revises previous thinking").optional(),
+    revisesThought: z.number().min(1).describe("If isRevision is true, which thought number is being reconsidered").optional(),
+    branchFromThought: z.number().min(1).describe("If branching, which thought number is the branching point").optional(),
+    branchId: z.string().describe("Identifier for the current branch (if any)").optional(),
+    needsMoreThoughts: z.boolean().describe("If reaching end but realizing more thoughts needed").optional(),
+    category: z.object({
+        type: z.enum(['analysis', 'hypothesis', 'verification', 'revision', 'solution']),
+        confidence: z.number().min(0).max(1),
+        metadata: z.record(z.unknown()).optional()
+    }).describe("Categorization and metadata for the thought").optional(),
+    confidence: z.number().min(0).max(1).describe("Confidence level for this thought").optional(),
+    context: z.object({
+        problemScope: z.string().optional(),
+        assumptions: z.array(z.string()).optional(),
+        constraints: z.array(z.string()).optional()
+    }).describe("Additional context for the thought").optional()
 };
 
-export const TOOL_DESCRIPTION = `A detailed tool for dynamic and reflective problem-solving through thoughts.
-This tool helps analyze problems through a flexible thinking process that can adapt and evolve.
-Each thought can build on, question, or revise previous insights as understanding deepens.
+// Enhanced tool description
+export const TOOL_DESCRIPTION = `A powerful tool for dynamic and reflective problem-solving through structured thinking.
+This tool implements an advanced sequential thinking process with the following capabilities:
 
-When to use this tool:
-- Breaking down complex problems into steps
-- Planning and design with room for revision
-- Analysis that might need course correction
-- Problems where the full scope might not be clear initially
-- Problems that require a multi-step solution
-- Tasks that need to maintain context over multiple steps
-- Situations where irrelevant information needs to be filtered out
+Core Features:
+- Maximum depth of 12 sequential thoughts
+- Parallel processing of compatible thoughts
+- Large context window (163840 tokens)
+- Advanced branching capabilities
+- Revision system with confidence thresholds
+- Dynamic adaptation based on context
 
-Key features:
-- You can adjust total_thoughts up or down as you progress
-- You can question or revise previous thoughts
-- You can add more thoughts even after reaching what seemed like the end
-- You can express uncertainty and explore alternative approaches
-- Not every thought needs to build linearly - you can branch or backtrack
-- Generates a solution hypothesis
-- Verifies the hypothesis based on the Chain of Thought steps
-- Repeats the process until satisfied
-- Provides a correct answer
+Enhancement Features:
+- Automatic thought summarization
+- Thought categorization and metadata
+- Progress tracking and metrics
+- Dynamic strategy adaptation
+- Confidence-based validation
 
-Parameters explained:
-- thought: Your current thinking step, which can include:
-* Regular analytical steps
-* Revisions of previous thoughts
-* Questions about previous decisions
-* Realizations about needing more analysis
-* Changes in approach
-* Hypothesis generation
-* Hypothesis verification
-- next_thought_needed: True if you need more thinking, even if at what seemed like the end
-- thought_number: Current number in sequence (can go beyond initial total if needed)
-- total_thoughts: Current estimate of thoughts needed (can be adjusted up/down)
-- is_revision: A boolean indicating if this thought revises previous thinking
-- revises_thought: If is_revision is true, which thought number is being reconsidered
-- branch_from_thought: If branching, which thought number is the branching point
-- branch_id: Identifier for the current branch (if any)
-- needs_more_thoughts: If reaching end but realizing more thoughts needed
+Processing Capabilities:
+1. Thought Initialization
+   - Problem scope analysis
+   - Required thoughts estimation
+   - Parameter optimization
 
-You should:
-1. Start with an initial estimate of needed thoughts, but be ready to adjust
-2. Feel free to question or revise previous thoughts
-3. Don't hesitate to add more thoughts if needed, even at the "end"
-4. Express uncertainty when present
-5. Mark thoughts that revise previous thinking or branch into new paths
-6. Ignore information that is irrelevant to the current step
-7. Generate a solution hypothesis when appropriate
-8. Verify the hypothesis based on the Chain of Thought steps
-9. Repeat the process until satisfied with the solution
-10. Provide a single, ideally correct answer as the final output
-11. Only set next_thought_needed to false when truly done and a satisfactory answer is reached`;
+2. Advanced Processing
+   - Parallel thought execution
+   - Branch management
+   - Dynamic adaptation
+   - Context preservation
+
+3. Quality Assurance
+   - Confidence thresholds
+   - Revision tracking
+   - Performance monitoring
+   - Error detection
+
+4. Debug Features
+   - Error capture and analysis
+   - Metric tracking
+   - Performance optimization
+   - State validation
+
+Usage Guidelines:
+1. Start with clear problem definition
+2. Utilize branching for complex scenarios
+3. Monitor confidence levels
+4. Track progress and metrics
+5. Leverage parallel processing
+6. Use revision system for refinement
+
+The tool maintains backward compatibility while providing enhanced capabilities for complex problem-solving scenarios.`;

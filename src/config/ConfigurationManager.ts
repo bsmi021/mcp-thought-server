@@ -25,6 +25,8 @@ export class ConfigurationManager {
                     maxDrafts: 10,
                     contextWindow: 16384,
                     confidenceThreshold: 0.6,  // Base confidence threshold
+                    minConfidenceGrowth: 0.05, // Minimum confidence growth between drafts
+                    minRevisionConfidence: 0.65, // Minimum confidence for revisions
                     enableParallelProcessing: false,
                     revisionEnabled: true
                 },
@@ -34,7 +36,9 @@ export class ConfigurationManager {
                     contextWindow: 163840,
                     branchingEnabled: true,
                     revisionEnabled: true,
-                    confidenceThreshold: 0.6  // Base confidence threshold
+                    confidenceThreshold: 0.6,  // Base confidence threshold
+                    minConfidenceGrowth: 0.05, // Minimum confidence growth between thoughts
+                    minRevisionConfidence: 0.65 // Minimum confidence for revisions
                 },
                 enhancementConfig: {
                     enableCrossServiceOptimization: true,
@@ -66,6 +70,8 @@ export class ConfigurationManager {
                 maxDrafts: 10,
                 contextWindow: 16384,
                 confidenceThreshold: 0.6,  // Base confidence threshold
+                minConfidenceGrowth: 0.05, // Minimum confidence growth between drafts
+                minRevisionConfidence: 0.65, // Minimum confidence for revisions
                 enableParallelProcessing: false,
                 revisionEnabled: true,
                 creativeContentEnabled: true  // Enable creative content by default
@@ -76,7 +82,9 @@ export class ConfigurationManager {
                 contextWindow: 163840,
                 branchingEnabled: true,
                 revisionEnabled: true,
-                confidenceThreshold: 0.6  // Base confidence threshold
+                confidenceThreshold: 0.6,  // Base confidence threshold
+                minConfidenceGrowth: 0.05, // Minimum confidence growth between thoughts
+                minRevisionConfidence: 0.65 // Minimum confidence for revisions
             }
         };
     }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IntegratedConfig } from "../types/integrated.js";
+import { contextSchema } from '../utils/index.js';
 
 export const TOOL_NAME = "integratedThinking";
 
@@ -220,11 +220,8 @@ export const TOOL_PARAMS = {
         metadata: z.record(z.unknown()).optional()
     }).describe("Categorization and metadata").optional(),
     confidence: z.number().min(0).max(1).describe("Confidence level").optional(),
-    context: z.object({
-        problemScope: z.string().optional(),
-        assumptions: z.array(z.string()).optional(),
-        constraints: z.array(z.string()).optional()
-    }).describe("Additional context").optional(),
+    context: contextSchema.describe("Additional context for integrated processing").optional(),
+
     mcpFeatures: z.object({
         sequentialThinking: z.boolean().optional(),
         draftProcessing: z.boolean().optional(),

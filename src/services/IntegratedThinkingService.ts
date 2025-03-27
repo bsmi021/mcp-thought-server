@@ -5,8 +5,7 @@ import {
     IntegratedMetrics,
     IntegratedProcessingState,
     IntegratedResult,
-    integratedConfigSchema,
-    integratedResultSchema,
+
     MCPEnhancements
 } from '../types/integrated.js';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -14,6 +13,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { EnhancementConfig as DraftEnhancementConfig, DraftData } from '../types/chainOfDraft.js';
 import { EnhancementConfig as SequentialEnhancementConfig, SequentialThoughtData } from '../types/index.js';
 import { ConfigurationManager } from '../config/ConfigurationManager.js';
+import { sanitizeContext, getContextConfidence, hasContextContent, mergeContexts, logger } from '../utils/index.js';
 
 /**
  * Service that integrates Chain of Draft and Sequential Thinking with MCP capabilities.
@@ -156,7 +156,7 @@ export class IntegratedThinkingService {
         this.metrics.mcpIntegrationMetrics.lastError = error instanceof Error ? error.message : String(error);
 
         if (this.config.debugConfig.errorCapture) {
-            console.error('Integration Error:', {
+            logger.error('Integration Error:', {
                 timestamp: Date.now(),
                 error: error instanceof Error ? error.message : String(error),
                 state: this.processingState
@@ -195,7 +195,7 @@ export class IntegratedThinkingService {
      * Log current metrics
      */
     private logMetrics(): void {
-        console.debug('Processing metrics:', {
+        logger.debug('Processing metrics:', {
             time: Date.now() - this.metrics.startTime,
             memory: process.memoryUsage(),
             state: this.processingState,
@@ -365,13 +365,32 @@ export class IntegratedThinkingService {
             resource: 0.15
         };
 
-        // Calculate weighted confidence score
-        const confidence = (
+        // Calculate weighted confidence score with minimum growth enforcement
+        let confidence = (
             contentQuality * weights.content +
             processingSuccess * weights.processing +
             contextRelevance * weights.context +
             resourceEfficiency * weights.resource
         );
+
+        // Enforce minimum confidence growth if not first thought/draft
+        if (this.metrics.serviceMetrics.sequential.totalThoughts > 1) {
+            const minExpectedConfidence = Math.max(
+                (this.config.sequentialConfig?.confidenceThreshold || 0.6) + (this.config.draftConfig?.minConfidenceGrowth || 0.05),
+                sequentialConfidence + (this.config.draftConfig?.minConfidenceGrowth || 0.05)
+            );
+            confidence = Math.max(confidence, minExpectedConfidence);
+        }
+
+        // Apply revision confidence requirements
+        if (draftResult.isRevision || sequentialResult.isRevision) {
+            confidence = Math.max(
+                confidence,
+                this.config.draftConfig?.minRevisionConfidence || 0.65,
+                sequentialConfidence,
+                draftConfidence
+            );
+        }
 
         // Apply adaptive threshold
         return Math.min(0.95, Math.max(0.4, confidence));
@@ -421,11 +440,23 @@ export class IntegratedThinkingService {
 
         if (!expectedContext.length) return 0.7;
 
+        // Use sanitized contexts for comparison
+        const sequentialContext = sanitizeContext(sequentialResult.context);
+        const draftContext = sanitizeContext(draftResult.context);
+
+        // Get confidence scores
+        const seqConfidence = getContextConfidence(sequentialContext);
+        const draftConfidence = getContextConfidence(draftContext);
+
+        // Calculate matches
         const matches = actualContext.filter(word =>
             expectedContext.some(keyword => word.includes(keyword))
         ).length;
 
-        return Math.min(1, matches / Math.max(1, expectedContext.length));
+        const matchScore = matches / Math.max(1, expectedContext.length);
+        const confidenceScore = (seqConfidence + draftConfidence) / 2;
+
+        return Math.min(1, (matchScore * 0.7) + (confidenceScore * 0.3));
     }
 
     /**
@@ -484,14 +515,18 @@ export class IntegratedThinkingService {
     ): string[] {
         const context: string[] = [];
 
-        // Add sequential context
-        if (sequentialResult.context?.problemScope) {
-            context.push(sequentialResult.context.problemScope);
-        }
+        // Merge and sanitize contexts
+        const mergedContext = mergeContexts([
+            sanitizeContext(sequentialResult.context),
+            sanitizeContext(draftResult.context)
+        ]);
 
-        // Add draft context
-        if (draftResult.critiqueFocus) {
-            context.push(draftResult.critiqueFocus);
+        if (hasContextContent(mergedContext)) {
+            if (mergedContext.problemScope) {
+                context.push(mergedContext.problemScope);
+            }
+            context.push(...(mergedContext.assumptions || []));
+            context.push(...(mergedContext.constraints || []));
         }
 
         // Add content keywords
@@ -513,5 +548,33 @@ export class IntegratedThinkingService {
 
         const total = this.metrics.processingTimes.reduce((sum, time) => sum + time, 0);
         return total / this.metrics.processingTimes.length;
+    }
+
+    private validateIntegratedResult(result: IntegratedResult): boolean {
+        // Validate confidence thresholds
+        if (!result.category?.confidence) return false;
+
+        const confidence = result.category.confidence;
+        const isRevision = result.draftOutput?.isRevision || result.sequentialOutput?.isRevision || false;
+
+        // Check minimum confidence requirements
+        if (isRevision && confidence < (this.config.draftConfig?.minRevisionConfidence || 0.65)) {
+            return false;
+        }
+
+        // Check confidence growth for non-first thoughts
+        if (this.metrics.serviceMetrics.sequential.totalThoughts > 1) {
+            const lastConfidence = this.getLastResultConfidence();
+            if (lastConfidence && confidence < lastConfidence + (this.config.draftConfig?.minConfidenceGrowth || 0.05)) {
+                return false;
+            }
+        }
+
+        // Check base confidence threshold
+        return confidence >= (this.config.sequentialConfig?.confidenceThreshold || 0.6);
+    }
+
+    private getLastResultConfidence(): number | undefined {
+        return this.metrics.serviceMetrics.sequential.lastConfidence || undefined;
     }
 } 

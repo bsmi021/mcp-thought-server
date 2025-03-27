@@ -1,5 +1,6 @@
 import { DraftConfig, EnhancementConfig, DebugConfig, DraftData, DraftMetrics, ProcessingState, DraftContext, DraftCategory, draftDataSchema } from "../types/chainOfDraft.js";
 import { ConfigurationManager } from '../config/ConfigurationManager.js';
+import { sanitizeContext, getContextConfidence, hasContextContent, mergeContexts, logger } from '../utils/index.js';
 
 /**
  * Service for managing Chain of Draft (CoD) operations.
@@ -122,7 +123,25 @@ export class ChainOfDraftService {
         }
 
         // Process new draft with parallel operations
-        return this.processNewDraft(draft);
+        const processedDraft = await this.processNewDraft(draft);
+
+        // Validate confidence growth if not the first draft
+        if (draft.draftNumber > 1) {
+            const previousDraft = this.draftHistory.get(draft.draftNumber - 1);
+            if (previousDraft?.confidence) {
+                const minExpectedConfidence = previousDraft.confidence + this.config.minConfidenceGrowth;
+                if (processedDraft.confidence && processedDraft.confidence < minExpectedConfidence) {
+                    processedDraft.confidence = minExpectedConfidence;
+                }
+            }
+        }
+
+        // Ensure minimum confidence threshold
+        if (processedDraft.confidence && processedDraft.confidence < this.config.confidenceThreshold) {
+            processedDraft.confidence = this.config.confidenceThreshold;
+        }
+
+        return processedDraft;
     }
 
     /**
@@ -152,10 +171,17 @@ export class ChainOfDraftService {
      */
     private async processDraftRevision(draft: DraftData, originalDraft: DraftData): Promise<DraftData> {
         const confidence = this.calculateDraftConfidence(draft);
+
+        // Ensure revision maintains minimum confidence
+        const minConfidence = Math.max(
+            this.config.minRevisionConfidence,
+            originalDraft.confidence || 0
+        );
+
         const processedDraft: DraftData = {
             ...draft,
             needsRevision: !this.validateDraft(draft),
-            confidence: Math.max(confidence, originalDraft.confidence || 0),
+            confidence: Math.max(confidence, minConfidence),
             metrics: this.generateMetrics(originalDraft.metrics)
         };
 
@@ -334,12 +360,13 @@ export class ChainOfDraftService {
         // Adjust based on draft position
         const positionAdjustment = Math.min(0.1, (draft.draftNumber / draft.totalDrafts) * 0.2);
 
-        // Adjust based on context complexity
-        const contextComplexity = this.assessContextComplexity(draft.context);
-        const complexityAdjustment = contextComplexity * 0.1;
+        // Adjust based on context quality
+        const sanitizedContext = sanitizeContext(draft.context);
+        const contextConfidence = getContextConfidence(sanitizedContext);
+        const contextAdjustment = (1 - contextConfidence) * 0.1;
 
         return Math.max(0.4, Math.min(0.9,
-            baseThreshold + positionAdjustment - complexityAdjustment
+            baseThreshold + positionAdjustment - contextAdjustment
         ));
     }
 
@@ -519,7 +546,7 @@ export class ChainOfDraftService {
         };
 
         // In a real implementation, you might want to log this to a proper error tracking system
-        console.error('Chain of Draft Error:', errorDetails);
+        logger.error('Chain of Draft Error:', errorDetails);
     }
 
     /**
@@ -531,7 +558,7 @@ export class ChainOfDraftService {
         if (this.debugConfig.performanceMonitoring) {
             // In a real implementation, you might want to store these metrics
             // in a proper monitoring system
-            console.debug('Processing metrics:', {
+            logger.debug('Processing metrics:', {
                 time: processingTime,
                 memory: process.memoryUsage(),
                 state: this.processingState
@@ -560,8 +587,24 @@ export class ChainOfDraftService {
             return false;
         }
 
-        // Content quality validation
+        // Calculate confidence
         const confidence = this.calculateDraftConfidence(draft);
+
+        // Validate against minimum thresholds
+        if (draft.isRevision) {
+            return confidence >= this.config.minRevisionConfidence;
+        }
+
+        // For regular drafts, check confidence growth if not the first draft
+        if (draft.draftNumber > 1) {
+            const previousDraft = this.draftHistory.get(draft.draftNumber - 1);
+            if (previousDraft?.confidence) {
+                const minExpectedConfidence = previousDraft.confidence + this.config.minConfidenceGrowth;
+                return confidence >= minExpectedConfidence;
+            }
+        }
+
+        // For first draft or when previous draft not found
         return confidence >= this.config.confidenceThreshold;
     }
 
@@ -572,22 +615,26 @@ export class ChainOfDraftService {
         const contentKeywords = this.extractContextKeywords(draft.content);
 
         // Get historical context
-        const historicalKeywords = new Set<string>();
-        Array.from(this.draftHistory.values())
+        const historicalContexts = Array.from(this.draftHistory.values())
             .slice(-3)
-            .forEach(d => {
-                if (d.content) {
-                    this.extractContextKeywords(d.content)
-                        .forEach(k => historicalKeywords.add(k));
-                }
-            });
+            .map(d => d.context)
+            .filter(Boolean);
 
-        // Calculate alignment score
+        // Merge and sanitize historical contexts
+        const mergedContext = mergeContexts(historicalContexts.map(ctx => sanitizeContext(ctx)));
+
+        // Calculate alignment score based on merged context
+        const contextKeywords = [
+            mergedContext.problemScope,
+            ...(mergedContext.assumptions || []),
+            ...(mergedContext.constraints || [])
+        ].filter((k): k is string => typeof k === 'string' && k.length > 0);
+
         const matches = contentKeywords.filter(word =>
-            Array.from(historicalKeywords).some(k => word.includes(k))
+            contextKeywords.some(k => word.toLowerCase().includes(k.toLowerCase()))
         ).length;
 
-        return Math.min(1, matches / Math.max(1, historicalKeywords.size));
+        return Math.min(1, matches / Math.max(1, contextKeywords.length));
     }
 
     private calculateSuccessRate(): number {
@@ -697,12 +744,13 @@ export class ChainOfDraftService {
     /**
      * Assess context complexity
      */
-    private assessContextComplexity(context?: DraftContext): number {
-        if (!context) return 0.5;
+    private assessContextComplexity(context?: unknown): number {
+        const sanitizedContext = sanitizeContext(context);
+        if (!hasContextContent(sanitizedContext)) return 0.5;
 
-        const hasAssumptions = context.assumptions && context.assumptions.length > 0;
-        const hasConstraints = context.constraints && context.constraints.length > 0;
-        const hasProblemScope = !!context.problemScope;
+        const hasAssumptions = sanitizedContext.assumptions && sanitizedContext.assumptions.length > 0;
+        const hasConstraints = sanitizedContext.constraints && sanitizedContext.constraints.length > 0;
+        const hasProblemScope = !!sanitizedContext.problemScope;
 
         const complexityFactors = [
             hasAssumptions ? 0.4 : 0,

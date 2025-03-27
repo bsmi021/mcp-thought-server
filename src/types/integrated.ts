@@ -70,11 +70,13 @@ export interface IntegratedMetrics {
             totalThoughts: number;
             averageProcessingTime: number;
             successRate: number;
+            lastConfidence?: number;
         };
         draft: {
             totalDrafts: number;
             averageProcessingTime: number;
             successRate: number;
+            lastConfidence?: number;
         };
     };
 }

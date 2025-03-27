@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DraftConfig, EnhancementConfig, DebugConfig } from "../types/chainOfDraft.js";
+import { contextSchema } from '../utils/index.js';
 
 export const TOOL_NAME = "chainOfDraft";
 
@@ -35,11 +35,7 @@ export const TOOL_PARAMS = {
       metadata: z.record(z.unknown()).optional()
    }).describe("Categorization and metadata for the draft").optional(),
    confidence: z.number().min(0).max(1).describe("Confidence level for this draft").optional(),
-   context: z.object({
-      problemScope: z.string().optional(),
-      assumptions: z.array(z.string()).optional(),
-      constraints: z.array(z.string()).optional()
-   }).describe("Additional context for the draft").optional()
+   context: contextSchema.describe("Additional context for the draft").optional()
 };
 
 // Enhanced tool description

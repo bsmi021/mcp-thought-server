@@ -5,6 +5,8 @@ export interface DraftConfig {
     maxDrafts: number;
     contextWindow: number;
     confidenceThreshold: number;
+    minConfidenceGrowth: number;  // Minimum confidence increase between drafts
+    minRevisionConfidence: number;  // Minimum confidence for revisions
     enableParallelProcessing: boolean;
     revisionEnabled: boolean;
     creativeContentEnabled?: boolean;

@@ -6,6 +6,8 @@ export interface CoreConfig {
     branchingEnabled: boolean;
     revisionEnabled: boolean;
     confidenceThreshold: number;
+    minConfidenceGrowth: number;  // Minimum confidence increase between thoughts
+    minRevisionConfidence: number;  // Minimum confidence for revisions
 }
 
 export interface EnhancementConfig {
@@ -84,6 +86,9 @@ export interface ThoughtContext {
     assumptions?: string[];
     constraints?: string[];
 }
+
+// Ensure DraftContext matches ThoughtContext for consistency
+export type DraftContext = ThoughtContext;
 
 // Enhanced ThoughtData interface
 export interface SequentialThoughtData {

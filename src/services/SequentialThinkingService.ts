@@ -1,6 +1,7 @@
 import { SequentialThoughtData, ThoughtCategory, CoreConfig, EnhancementConfig, DebugConfig, ProcessingState, ThoughtInitialization, DynamicAdaptation, ThoughtContext, ThoughtMetrics } from "../types/index.js";
 import { ConfigurationManager } from '../config/ConfigurationManager.js';
 import chalk from "chalk";
+import { sanitizeContext, getContextConfidence, hasContextContent, logger } from '../utils/index.js';
 
 export class SequentialThinkingService {
     private thoughtHistory: SequentialThoughtData[] = [];
@@ -18,7 +19,12 @@ export class SequentialThinkingService {
     private readonly config: Required<CoreConfig>;
     private readonly enhancementConfig: Required<EnhancementConfig>;
     private readonly debugConfig: Required<DebugConfig>;
-    private readonly metrics: ThoughtMetrics;
+    private readonly metrics: ThoughtMetrics & { totalThoughts: number } = {
+        processingTime: 0,
+        resourceUsage: process.memoryUsage().heapUsed,
+        dependencyChain: [],
+        totalThoughts: 0
+    };
     private processingTimes: number[] = [];  // Track processing times separately
     private progressMetrics: {
         startTime: number;
@@ -67,7 +73,8 @@ export class SequentialThinkingService {
         this.metrics = {
             processingTime: 0,
             resourceUsage: process.memoryUsage().heapUsed,
-            dependencyChain: []
+            dependencyChain: [],
+            totalThoughts: 0
         };
     }
 
@@ -128,133 +135,198 @@ export class SequentialThinkingService {
         return validatedData;
     }
 
-    private calculateThoughtConfidence(data: Record<string, unknown>): number {
-        const thought = data.thought as string;
+    private calculateThoughtConfidence(thought: Partial<SequentialThoughtData>): number {
+        if (!thought.thought) {
+            return 0.4; // Default confidence for invalid thoughts
+        }
 
-        // Content quality score (0-1)
+        // Base confidence from content quality
         const contentQuality = this.calculateContentQuality(thought);
 
-        // Processing metrics score (0-1)
-        const processingMetrics = {
-            processingTime: this.getAverageProcessingTime(),
-            errorRate: 1 - this.calculateSuccessRate(),
-            resourceUsage: process.memoryUsage().heapUsed
-        };
-        const processingScore = this.calculateProcessingScore(processingMetrics);
+        // Calculate processing success score
+        const processingSuccess = 1 - (1 - this.calculateSuccessRate());
 
-        // Context relevance score (0-1)
-        const context = {
-            expected: this.getExpectedContext(),
-            actual: this.extractContextKeywords(thought)
-        };
-        const contextScore = this.calculateContextRelevance(context);
+        // Calculate context relevance
+        const contextRelevance = this.calculateContextRelevance(thought);
 
-        // Resource efficiency score (0-1)
-        const resourceScore = this.calculateResourceEfficiency({
-            memoryUsage: processingMetrics.resourceUsage,
-            processingTime: processingMetrics.processingTime
-        });
+        // Calculate resource efficiency
+        const resourceEfficiency = this.calculateResourceEfficiency();
 
-        // Weight the components
+        // Weight components for final confidence
         const weights = {
-            contentQuality: 0.35,
-            processingScore: 0.25,
-            contextScore: 0.25,
-            resourceScore: 0.15
+            content: 0.35,
+            processing: 0.25,
+            context: 0.25,
+            resource: 0.15
         };
 
-        // Calculate weighted average
-        const confidence = (
-            contentQuality * weights.contentQuality +
-            processingScore * weights.processingScore +
-            contextScore * weights.contextScore +
-            resourceScore * weights.resourceScore
+        // Calculate weighted confidence score with minimum growth enforcement
+        let confidence = (
+            contentQuality * weights.content +
+            processingSuccess * weights.processing +
+            contextRelevance * weights.context +
+            resourceEfficiency * weights.resource
         );
 
-        // Apply adaptive threshold based on thought number
-        const adaptiveThreshold = Math.max(
-            0.4,  // Minimum threshold
-            0.6 - (this.thoughtHistory.length * 0.02)  // Decreases as chain progresses
+        // Enforce minimum confidence growth if not first thought
+        if (this.metrics.totalThoughts > 1) {
+            const lastConfidence = this.getLastThoughtConfidence();
+            if (lastConfidence) {
+                const minExpectedConfidence = Math.max(
+                    (this.config?.confidenceThreshold || 0.6) + (this.config?.minConfidenceGrowth || 0.05),
+                    lastConfidence + (this.config?.minConfidenceGrowth || 0.05)
+                );
+                confidence = Math.max(confidence, minExpectedConfidence);
+            }
+        }
+
+        // Apply revision confidence requirements if this is a revision
+        if (thought.isRevision) {
+            confidence = Math.max(
+                confidence,
+                this.config?.minRevisionConfidence || 0.65
+            );
+        }
+
+        // Apply adaptive threshold
+        return Math.min(0.95, Math.max(0.4, confidence));
+    }
+
+    private validateThought(thought: SequentialThoughtData): boolean {
+        // Basic validation
+        if (!thought.thought || thought.thought.length < 50) {
+            return false;
+        }
+
+        // Calculate confidence
+        const confidence = this.calculateThoughtConfidence(thought);
+
+        // Validate against minimum thresholds
+        if (thought.isRevision) {
+            return confidence >= (this.config?.minRevisionConfidence || 0.65);
+        }
+
+        // For regular thoughts, check confidence growth if not the first thought
+        if (this.metrics.totalThoughts > 1) {
+            const lastConfidence = this.getLastThoughtConfidence();
+            if (lastConfidence) {
+                const minExpectedConfidence = lastConfidence + (this.config?.minConfidenceGrowth || 0.05);
+                return confidence >= minExpectedConfidence;
+            }
+        }
+
+        // For first thought or when previous thought not found
+        return confidence >= (this.config?.confidenceThreshold || 0.6);
+    }
+
+    private getLastThoughtConfidence(): number | undefined {
+        const lastThought = Array.from(this.thoughtHistory.values()).pop();
+        return lastThought?.confidence;
+    }
+
+    private calculateContentQuality(thought: Partial<SequentialThoughtData>): number {
+        if (!thought.thought) return 0.4;
+
+        // Content structure metrics (30%)
+        const hasStructure = thought.thought.includes('\n') || thought.thought.includes('.');
+        const appropriateLength = thought.thought.length > 50 && thought.thought.length < 20000;
+        const structureScore = (hasStructure ? 0.5 : 0) + (appropriateLength ? 0.5 : 0);
+
+        // Content analysis metrics (40%)
+        const coherenceScore = this.calculateCoherence(thought.thought);
+        const relevanceScore = this.calculateRelevance(thought);
+        const analysisScore = (coherenceScore + relevanceScore) / 2;
+
+        // Context alignment (30%)
+        const contextScore = this.calculateContextAlignment(thought);
+
+        // Weighted combination
+        return (
+            structureScore * 0.3 +
+            analysisScore * 0.4 +
+            contextScore * 0.3
         );
-
-        // Return adjusted confidence
-        return Math.max(adaptiveThreshold, Math.min(0.95, confidence));
     }
 
-    private calculateContentQuality(content: string): number {
-        // Implement content quality metrics
-        const hasStructure = content.includes('\n') || content.includes('.');
-        const appropriateLength = content.length > 30 && content.length < 10000;
-        const hasKeywords = this.hasRelevantKeywords(content);
-        const complexity = this.calculateTextComplexity(content);
+    private calculateCoherence(content: string): number {
+        const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+        const avgLength = sentences.reduce((sum, s) => sum + s.length, 0) / sentences.length;
 
-        let score = 0.5; // Base score
+        // Score based on optimal sentence length and count
+        const lengthScore = Math.min(1, Math.max(0, 1 - Math.abs(100 - avgLength) / 100));
+        const countScore = Math.min(1, sentences.length / 10);
 
-        if (hasStructure) score += 0.1;
-        if (appropriateLength) score += 0.1;
-        if (hasKeywords) score += 0.15;
-        score += complexity * 0.15;
-
-        return Math.min(1, score);
+        return (lengthScore + countScore) / 2;
     }
 
-    private hasRelevantKeywords(content: string): boolean {
-        const keywords = ['analyze', 'consider', 'evaluate', 'examine', 'investigate', 'determine', 'conclude'];
-        return keywords.some(keyword => content.toLowerCase().includes(keyword));
-    }
+    private calculateRelevance(thought: Partial<SequentialThoughtData>): number {
+        if (!thought.thought) return 0.5;
 
-    private calculateTextComplexity(content: string): number {
-        const words = content.split(/\s+/).length;
-        const sentences = content.split(/[.!?]+/).length;
-        const avgWordsPerSentence = words / Math.max(1, sentences);
+        const keywords = this.extractContextKeywords(thought.thought);
+        const expectedKeywords = this.getExpectedContext();
 
-        // Score based on optimal sentence length (10-20 words)
-        return Math.min(1, Math.max(0, 1 - Math.abs(15 - avgWordsPerSentence) / 15));
-    }
-
-    private calculateProcessingScore(metrics: { processingTime: number; errorRate: number; resourceUsage: number }): number {
-        const timeScore = Math.min(1, 1000 / Math.max(1, metrics.processingTime));
-        const errorScore = 1 - metrics.errorRate;
-        const resourceScore = 1 - (metrics.resourceUsage / (1024 * 1024 * 100)); // Normalize to 100MB
-
-        return (timeScore + errorScore + resourceScore) / 3;
-    }
-
-    private calculateContextRelevance(context: { expected: string[]; actual: string[] }): number {
-        if (!context.expected.length || !context.actual.length) return 0.5;
-
-        const matches = context.actual.filter(item =>
-            context.expected.some(exp => item.toLowerCase().includes(exp.toLowerCase()))
+        const matches = keywords.filter(word =>
+            expectedKeywords.some(keyword => word.includes(keyword))
         ).length;
 
-        const coverage = matches / Math.max(context.expected.length, context.actual.length);
-
-        // Add progressive bonus for thought chain context
-        const chainBonus = Math.min(0.2, this.thoughtHistory.length * 0.02);
-
-        return Math.min(1, coverage + chainBonus);
+        return Math.min(1, matches / Math.max(1, expectedKeywords.length));
     }
 
-    private calculateResourceEfficiency(metrics: { memoryUsage: number; processingTime: number }): number {
-        const maxMemory = 1024 * 1024 * 100; // 100MB
-        const targetTime = 1000; // 1s
+    private calculateContextAlignment(thought: Partial<SequentialThoughtData>): number {
+        if (!thought.thought) return 0.5;
+
+        const contentKeywords = this.extractContextKeywords(thought.thought);
+        const contextKeywords = this.getExpectedContext();
+
+        const matches = contentKeywords.filter(word =>
+            contextKeywords.some(keyword => word.includes(keyword))
+        ).length;
+
+        return Math.min(1, matches / Math.max(1, contextKeywords.length));
+    }
+
+    private calculateContextRelevance(thought: Partial<SequentialThoughtData>): number {
+        if (!thought.thought) return 0.5;
+
+        const expectedContext = this.getExpectedContext();
+        const actualContext = this.extractContextKeywords(thought.thought);
+
+        const matches = actualContext.filter(word =>
+            expectedContext.some(keyword => word.includes(keyword))
+        ).length;
+
+        return Math.min(1, matches / Math.max(1, expectedContext.length));
+    }
+
+    private calculateResourceEfficiency(): number {
+        const metrics = {
+            processingTime: this.getAverageProcessingTime(),
+            memoryUsage: process.memoryUsage().heapUsed
+        };
+
+        const maxMemory = 1024 * 1024 * 200; // 200MB
+        const targetTime = 2000; // 2s
 
         const memoryScore = 1 - (metrics.memoryUsage / maxMemory);
         const timeScore = 1 - (metrics.processingTime / targetTime);
 
-        // Add efficiency bonus for parallel processing
-        const parallelBonus = this.config.parallelTasks ? 0.1 : 0;
-
-        return Math.min(1, ((memoryScore + timeScore) / 2) + parallelBonus);
+        return Math.min(1, (memoryScore + timeScore) / 2);
     }
 
     private getExpectedContext(): string[] {
-        // Extract expected context from thought history and current state
         const context: string[] = [];
 
-        // Add problem scope if available
-        if (this.thoughtHistory.length > 0 && this.thoughtHistory[0].context?.problemScope) {
-            context.push(this.thoughtHistory[0].context.problemScope);
+        // Get the most recent context
+        const recentThought = this.thoughtHistory[this.thoughtHistory.length - 1];
+        if (recentThought?.context) {
+            const sanitizedContext = sanitizeContext(recentThought.context);
+            if (hasContextContent(sanitizedContext)) {
+                if (sanitizedContext.problemScope) {
+                    context.push(sanitizedContext.problemScope);
+                }
+                context.push(...(sanitizedContext.assumptions || []));
+                context.push(...(sanitizedContext.constraints || []));
+            }
         }
 
         // Add recent thought keywords
@@ -336,6 +408,10 @@ export class SequentialThinkingService {
         const problemScope = input.thought as string;
         const estimatedThoughts = input.totalThoughts as number;
 
+        // Sanitize context input
+        const sanitizedContext = sanitizeContext(input.context);
+        const contextConfidence = getContextConfidence(sanitizedContext);
+
         // Initialize with current configuration
         const initialization: ThoughtInitialization = {
             problemScope,
@@ -343,18 +419,15 @@ export class SequentialThinkingService {
             initialParameters: {
                 maxDepth: this.config.maxDepth,
                 contextWindow: this.config.contextWindow,
-                confidenceThreshold: this.config.confidenceThreshold
+                // Adjust confidence threshold based on context quality
+                confidenceThreshold: Math.max(
+                    this.config.confidenceThreshold,
+                    contextConfidence
+                )
             },
-            assumptions: [],
-            constraints: []
+            assumptions: sanitizedContext.assumptions || [],
+            constraints: sanitizedContext.constraints || []
         };
-
-        // Extract context if provided
-        if (input.context) {
-            const context = input.context as ThoughtContext;
-            if (context.assumptions) initialization.assumptions = context.assumptions;
-            if (context.constraints) initialization.constraints = context.constraints;
-        }
 
         return initialization;
     }
@@ -501,7 +574,7 @@ export class SequentialThinkingService {
 
             // Format and output thought
             const formattedThought = this.formatThought(validatedInput);
-            console.error(formattedThought);
+            logger.error(formattedThought);
 
             // Generate response with enhanced metrics
             const response: any = {

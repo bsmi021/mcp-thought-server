@@ -1,6 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
 import { TOOL_NAME, TOOL_PARAMS, TOOL_DESCRIPTION } from "./sequentialThinkingParams.js";
 import { SequentialThinkingService } from "../services/index.js";
 import { CoreConfig, EnhancementConfig, DebugConfig } from "../types/index.js";

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CoreConfig, EnhancementConfig, DebugConfig } from "../types/index.js";
+import { contextSchema } from '../utils/index.js';
 
 
 export const TOOL_NAME = "sequentialThinking";
@@ -310,11 +310,7 @@ export const TOOL_PARAMS = {
       metadata: z.record(z.unknown()).optional()
    }).describe("Categorization and metadata for the thought").optional(),
    confidence: z.number().min(0).max(1).describe("Confidence level for this thought").optional(),
-   context: z.object({
-      problemScope: z.string().optional(),
-      assumptions: z.array(z.string()).optional(),
-      constraints: z.array(z.string()).optional()
-   }).describe("Additional context for the thought").optional(),
+   context: contextSchema.describe("Additional context for the thought").optional(),
    metrics: z.object({
       processingTime: z.number().min(0).describe("Processing time in milliseconds"),
       resourceUsage: z.number().min(0).describe("Resource usage in bytes"),

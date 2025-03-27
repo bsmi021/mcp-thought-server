@@ -3,7 +3,7 @@ import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { TOOL_NAME, TOOL_PARAMS, TOOL_DESCRIPTION } from "./integratedParams.js";
 import { IntegratedThinkingService } from "../services/index.js";
-import { IntegratedConfig, IntegratedResult } from "../types/integrated.js";
+import { IntegratedConfig } from "../types/integrated.js";
 
 // Service instance with configuration
 let integratedService: IntegratedThinkingService | null = null;

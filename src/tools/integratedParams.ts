@@ -360,6 +360,7 @@ export const TOOL_PARAMS = {
    reasoningChain: z.array(z.string()).describe("Array of reasoning steps").optional(),
    category: z.object({
       type: z.enum(['initial', 'critique', 'revision', 'final']).describe(`
+            ** Note the names of the categories are the only names that can be used.
             Integrated stage combining thought and draft processes:
             - 'initial': First analysis and draft (confidence: 0.5-0.7)
             - 'critique': Combined analysis and review (requires isCritique)
@@ -367,6 +368,7 @@ export const TOOL_PARAMS = {
             - 'final': Complete solution (confidence >= 0.9)
         `),
       confidence: z.number().min(0).max(1).describe(`
+            ** Note the confidence score is a combined score of the thinking and drafting processes.
             Combined confidence score (thinking + drafting):
             < 0.4: Critical issues
             0.4-0.6: Basic progress
@@ -405,6 +407,7 @@ Enhancement Features:
 - Dynamic strategy adaptation
 - Confidence-based validation
 - MCP integration
+- Category system with enhanced context awareness type processing including (initial, critique, revision, final)
 
 Processing Capabilities:
 1. Integrated Initialization
@@ -443,4 +446,43 @@ Usage Guidelines:
 6. Leverage parallel processing
 7. Use revision system for refinement
 
-The tool maintains backward compatibility while providing enhanced integrated capabilities for complex processing scenarios.`; 
+The tool maintains backward compatibility while providing enhanced integrated capabilities for complex processing scenarios.`;
+
+/** Parameter Relationships:
+ * ---------------------
+ * 1. Draft-Thought Relationship:
+ *    - thoughtNumber tracks sequential thinking progress
+ *    - draftNumber tracks draft refinement progress
+ *    - Both must increment properly within their chains
+ *    - Can't have draft without associated thought
+ * 
+ * 2. Revision Chain:
+ *    - needsRevision triggers revision processes
+ *    - isRevision indicates revision state
+ *    - revisesDraft must reference valid draft
+ *    - Affects confidence calculations
+ * 
+ * 3. Category-Confidence Flow:
+ *    - category.type affects processing path
+ *    - category.confidence influences decisions
+ *    - Overall confidence calculated from multiple factors
+ *    - Thresholds vary by category type
+ * 
+ * 4. Context Inheritance:
+ *    - Context flows through thought chain
+ *    - Draft inherits context from thoughts
+ *    - Revisions maintain context lineage
+ *    - Critical for coherence
+ * 
+ * 5. Error Handling:
+ *    - Validation errors trigger corrective actions
+ *    - Out-of-sequence numbers are handled
+ *    - Missing relationships are detected
+ *    - Resolution strategies are implemented
+ * 
+ * 6. Performance Considerations:
+ *    - Content size impacts
+ *    - Resource allocation
+ *    - Parallel processing limits
+ *    - Memory management
+ */

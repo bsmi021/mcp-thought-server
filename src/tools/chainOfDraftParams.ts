@@ -15,9 +15,94 @@ export const TOOL_NAME = "chainOfDraft";
 - critiqueFocus: The focus area of the critique (e.g., 'completeness', 'clarity', etc.)
 - reasoningChain: Array of reasoning steps leading to the current draft/critique
 - nextStepNeeded: True if more steps are needed in the process
+
+Category Types and Usage:
+-----------------------
+The category parameter defines the current stage of the drafting process:
+
+1. 'initial' - First draft or starting point
+   - Used when creating the first version
+   - Typically has lower confidence (0.4-0.7)
+   - No revision history required
+   Example:
+   {
+     category: {
+       type: 'initial',
+       confidence: 0.6,
+       metadata: { stage: 'first_draft' }
+     }
+   }
+
+2. 'critique' - Review and analysis phase
+   - Used when evaluating existing content
+   - Requires isCritique: true
+   - Should specify critiqueFocus
+   - Confidence reflects critique thoroughness
+   Example:
+   {
+     category: {
+       type: 'critique',
+       confidence: 0.85,
+       metadata: { focus: 'completeness' }
+     },
+     isCritique: true,
+     critiqueFocus: 'completeness'
+   }
+
+3. 'revision' - Modified version based on critique
+   - Requires isRevision: true and revisesDraft
+   - Higher confidence than initial (0.6-0.9)
+   - Must reference previous draft
+   Example:
+   {
+     category: {
+       type: 'revision',
+       confidence: 0.75,
+       metadata: { based_on_critique: true }
+     },
+     isRevision: true,
+     revisesDraft: 1
+   }
+
+4. 'final' - Completed and validated version
+   - Requires high confidence (>= 0.9)
+   - Should have revision history
+   - No further revision needed
+   Example:
+   {
+     category: {
+       type: 'final',
+       confidence: 0.95,
+       metadata: { validated: true }
+     },
+     needsRevision: false
+   }
+
+Confidence Score Impact:
+----------------------
+- < 0.4: Critical issues, requires immediate revision
+- 0.4-0.6: Basic draft quality, needs improvement
+- 0.6-0.8: Good quality, minor revisions may be needed
+- 0.8-0.9: High quality, ready for final review
+- >= 0.9: Excellent quality, can be marked as final
+
+Category Relationships:
+---------------------
+1. Initial -> Critique:
+   - First draft must be critiqued before revision
+   - Critique inherits context from initial
+
+2. Critique -> Revision:
+   - Critique leads to revision if needsRevision: true
+   - Revision must reference original draft
+
+3. Revision -> Final:
+   - Multiple revisions may be needed
+   - Final requires high confidence
+   - Must have revision history
 */
 
-// Enhanced tool parameters schema
+// Enhanced tool parameters schema with detailed category documentation
 export const TOOL_PARAMS = {
    content: z.string().describe("The current content being worked on (draft/critique/revision)"),
    draftNumber: z.number().min(1).describe("Current number in sequence"),
@@ -30,10 +115,23 @@ export const TOOL_PARAMS = {
    critiqueFocus: z.string().describe("The focus area of the critique").optional(),
    reasoningChain: z.array(z.string()).describe("Array of reasoning steps leading to the current draft/critique").optional(),
    category: z.object({
-      type: z.enum(['initial', 'critique', 'revision', 'final']),
-      confidence: z.number().min(0).max(1),
-      metadata: z.record(z.unknown()).optional()
-   }).describe("Categorization and metadata for the draft").optional(),
+      type: z.enum(['initial', 'critique', 'revision', 'final']).describe(`
+         The stage of the drafting process:
+         - 'initial': First draft (confidence: 0.4-0.7)
+         - 'critique': Review phase (requires isCritique: true)
+         - 'revision': Modified version (requires isRevision: true)
+         - 'final': Completed version (confidence >= 0.9)
+      `),
+      confidence: z.number().min(0).max(1).describe(`
+         Confidence score affecting processing:
+         < 0.4: Critical issues
+         0.4-0.6: Basic quality
+         0.6-0.8: Good quality
+         0.8-0.9: High quality
+         >= 0.9: Excellent
+      `),
+      metadata: z.record(z.unknown()).optional().describe("Additional stage-specific information")
+   }).describe("Categorization and metadata for the draft stage").optional(),
    confidence: z.number().min(0).max(1).describe("Confidence level for this draft").optional(),
    context: contextSchema.describe("Additional context for the draft").optional()
 };

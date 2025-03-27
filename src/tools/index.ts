@@ -1,17 +1,24 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { thinkingTool } from "./sequentialThinkingTool.js";
 import { draftTool } from "./chainOfDraftTool.js";
-import { ConfigurationManager } from "../config/ConfigurationManager.js";
 import { integratedTool } from "./integratedTool.js";
+import { setFeatureTool } from "./setFeatureTool.js";
+import { ConfigurationManager } from "../config/ConfigurationManager.js";
+import { DebugControlService } from "../services/DebugControlService.js";
 
-export function registerAllTools(server: McpServer): void {
+/**
+ * Register all tools with the MCP server
+ */
+export function registerTools(server: McpServer): void {
     registerThinkingTool(server);
     registerDraftTool(server);
     registerIntegratedTool(server);
+    setFeatureTool(server);
 }
 
 function registerThinkingTool(server: McpServer): void {
     const configManager = ConfigurationManager.getInstance();
+    const debugControl = DebugControlService.getInstance();
     const coreConfig = configManager.getCoreConfig();
     const enhancementConfig = {
         enableSummarization: true,
@@ -19,21 +26,17 @@ function registerThinkingTool(server: McpServer): void {
         progressTracking: true,
         dynamicAdaptation: true
     };
-    const debugConfig = {
-        errorCapture: true,
-        metricTracking: true,
-        performanceMonitoring: true
-    };
 
     thinkingTool(server, {
         core: coreConfig,
         enhancement: enhancementConfig,
-        debug: debugConfig
+        debug: debugControl.getDebugState()
     });
 }
 
 function registerDraftTool(server: McpServer): void {
     const configManager = ConfigurationManager.getInstance();
+    const debugControl = DebugControlService.getInstance();
     const draftConfig = configManager.getDraftConfig();
     const enhancementConfig = {
         enableSummarization: true,
@@ -41,28 +44,24 @@ function registerDraftTool(server: McpServer): void {
         progressTracking: true,
         dynamicAdaptation: true
     };
-    const debugConfig = {
-        errorCapture: true,
-        metricTracking: true,
-        performanceMonitoring: true
-    };
 
     draftTool(server, {
         core: draftConfig,
         enhancement: enhancementConfig,
-        debug: debugConfig
+        debug: debugControl.getDebugState()
     });
 }
 
 function registerIntegratedTool(server: McpServer): void {
     const configManager = ConfigurationManager.getInstance();
+    const debugControl = DebugControlService.getInstance();
     const integratedConfig = configManager.getIntegratedConfig();
 
     integratedTool(server, {
         draftConfig: integratedConfig.draftConfig,
         sequentialConfig: integratedConfig.sequentialConfig,
         enhancementConfig: integratedConfig.enhancementConfig,
-        debugConfig: integratedConfig.debugConfig,
+        debugConfig: debugControl.getDebugState(),
         mcpConfig: {
             serverUrl: process.env.MCP_SERVER_URL || "http://localhost:3000",
             apiKey: process.env.MCP_API_KEY || "default-key",
@@ -72,7 +71,7 @@ function registerIntegratedTool(server: McpServer): void {
                 sequentialThinking: true,
                 draftProcessing: true,
                 parallelProcessing: true,
-                monitoring: true
+                monitoring: debugControl.getDebugState().performanceMonitoring
             }
         }
     });

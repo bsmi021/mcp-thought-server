@@ -3,8 +3,10 @@ import { contextSchema } from '../utils/index.js';
 
 export const TOOL_NAME = "integratedThinking";
 
-/* REQUIRED PARAMETERS EXPLAINED
+/* PARAMETERS EXPLAINED
 
+Required Parameters:
+------------------
 content: The main content to be processed
 - Must contain the primary text/data for processing
 - No size limit but affects performance
@@ -198,36 +200,190 @@ USAGE EXAMPLES
     constraints: ["Must maintain existing API", "Zero downtime required"]
   }
 }
+
+Category System:
+--------------
+The integrated thinking tool uses the same category types as chainOfDraft but with enhanced context
+awareness and integration with sequential thinking:
+
+1. 'initial' - First stage combining draft and thought
+   - Used for initial problem analysis and first draft
+   - Combines sequential analysis with draft creation
+   - Typically starts with moderate confidence (0.5-0.7)
+   Example:
+   {
+     content: "Initial analysis of performance bottlenecks",
+     thoughtNumber: 1,
+     totalThoughts: 5,
+     draftNumber: 1,
+     totalDrafts: 3,
+     category: {
+       type: 'initial',
+       confidence: 0.6,
+       metadata: { 
+         phase: 'problem_analysis',
+         thinking_stage: 'exploration'
+       }
+     }
+   }
+
+2. 'critique' - Combined analysis and review
+   - Integrates sequential thinking analysis with draft critique
+   - Requires both thought analysis and draft review
+   - Should specify critiqueFocus for clarity
+   Example:
+   {
+     content: "Critical analysis of proposed solution",
+     thoughtNumber: 2,
+     totalThoughts: 5,
+     draftNumber: 1,
+     totalDrafts: 3,
+     category: {
+       type: 'critique',
+       confidence: 0.85,
+       metadata: { 
+         analysis_focus: 'feasibility',
+         critique_aspects: ['performance', 'scalability']
+       }
+     },
+     isCritique: true,
+     critiqueFocus: 'solution_viability'
+   }
+
+3. 'revision' - Iterative improvement
+   - Combines sequential thought revision with draft updates
+   - Must reference both previous thought and draft
+   - Higher confidence threshold than initial (0.7-0.9)
+   Example:
+   {
+     content: "Revised approach based on performance analysis",
+     thoughtNumber: 3,
+     totalThoughts: 5,
+     draftNumber: 2,
+     totalDrafts: 3,
+     category: {
+       type: 'revision',
+       confidence: 0.8,
+       metadata: { 
+         revision_basis: 'performance_analysis',
+         thought_chain: ['analysis', 'critique', 'revision']
+       }
+     },
+     isRevision: true,
+     revisesDraft: 1
+   }
+
+4. 'final' - Complete solution
+   - Represents both final thought and polished draft
+   - Requires highest confidence level (>= 0.9)
+   - Must show thought progression and draft evolution
+   Example:
+   {
+     content: "Final optimized solution with implementation details",
+     thoughtNumber: 5,
+     totalThoughts: 5,
+     draftNumber: 3,
+     totalDrafts: 3,
+     category: {
+       type: 'final',
+       confidence: 0.95,
+       metadata: { 
+         thought_completion: true,
+         draft_validated: true,
+         final_checks: ['completeness', 'correctness', 'optimization']
+       }
+     },
+     needsRevision: false,
+     nextStepNeeded: false
+   }
+
+Confidence Scoring in Integrated Context:
+--------------------------------------
+Confidence scores consider both thinking and drafting aspects:
+
+1. Thinking Component (50% weight):
+   - Problem understanding: 0-0.3
+   - Analysis depth: 0-0.3
+   - Solution viability: 0-0.4
+
+2. Drafting Component (50% weight):
+   - Content quality: 0-0.3
+   - Completeness: 0-0.3
+   - Refinement: 0-0.4
+
+Combined Score Interpretation:
+- < 0.4: Critical issues in either thinking or drafting
+- 0.4-0.6: Basic progress, needs significant improvement
+- 0.6-0.8: Good progress, minor refinements needed
+- 0.8-0.9: High quality, final review stage
+- >= 0.9: Excellent, ready for completion
+
+Category Relationships and Transitions:
+-----------------------------------
+1. Initial -> Critique:
+   - Requires complete thought analysis
+   - Draft must be substantial enough for review
+   - Context preservation across both aspects
+
+2. Critique -> Revision:
+   - Thought analysis must support critique findings
+   - Draft revisions must address identified issues
+   - Maintains dual context awareness
+
+3. Revision -> Final:
+   - Both thought chain and draft must be complete
+   - All critiques must be addressed
+   - High confidence required in both aspects
+
+Integration with MCP Features:
+---------------------------
+The category system integrates with MCP features through:
+1. Sequential thinking enabled: Affects thought progression
+2. Draft processing active: Influences draft refinement
+3. Parallel processing: Allows concurrent thought/draft work
+4. Monitoring: Tracks both thought and draft metrics
 */
 
-// Enhanced tool parameters schema
+// Enhanced tool parameters schema with integrated category documentation
 export const TOOL_PARAMS = {
-    content: z.string().describe("The main content to be processed"),
-    thoughtNumber: z.number().min(1).describe("Current thought number in sequence"),
-    totalThoughts: z.number().min(1).describe("Estimated total thoughts needed"),
-    draftNumber: z.number().min(1).describe("Current draft number"),
-    totalDrafts: z.number().min(1).describe("Estimated total drafts needed"),
-    needsRevision: z.boolean().describe("True if current content needs revision"),
-    nextStepNeeded: z.boolean().describe("True if more steps are needed in the process"),
-    isRevision: z.boolean().describe("True if this is a revision").optional(),
-    revisesDraft: z.number().min(1).describe("If isRevision is true, which draft is being revised").optional(),
-    isCritique: z.boolean().describe("True if this is a critique").optional(),
-    critiqueFocus: z.string().describe("Focus area of the critique").optional(),
-    reasoningChain: z.array(z.string()).describe("Array of reasoning steps").optional(),
-    category: z.object({
-        type: z.enum(['initial', 'critique', 'revision', 'final']),
-        confidence: z.number().min(0).max(1),
-        metadata: z.record(z.unknown()).optional()
-    }).describe("Categorization and metadata").optional(),
-    confidence: z.number().min(0).max(1).describe("Confidence level").optional(),
-    context: contextSchema.describe("Additional context for integrated processing").optional(),
-
-    mcpFeatures: z.object({
-        sequentialThinking: z.boolean().optional(),
-        draftProcessing: z.boolean().optional(),
-        parallelProcessing: z.boolean().optional(),
-        monitoring: z.boolean().optional()
-    }).describe("Enabled MCP features").optional()
+   content: z.string().describe("The main content to be processed"),
+   thoughtNumber: z.number().min(1).describe("Current thought number in sequence"),
+   totalThoughts: z.number().min(1).describe("Estimated total thoughts needed"),
+   draftNumber: z.number().min(1).describe("Current draft number"),
+   totalDrafts: z.number().min(1).describe("Estimated total drafts needed"),
+   needsRevision: z.boolean().describe("True if current content needs revision"),
+   nextStepNeeded: z.boolean().describe("True if more steps are needed in the process"),
+   isRevision: z.boolean().describe("True if this is a revision").optional(),
+   revisesDraft: z.number().min(1).describe("If isRevision is true, which draft is being revised").optional(),
+   isCritique: z.boolean().describe("True if this is a critique").optional(),
+   critiqueFocus: z.string().describe("Focus area of the critique").optional(),
+   reasoningChain: z.array(z.string()).describe("Array of reasoning steps").optional(),
+   category: z.object({
+      type: z.enum(['initial', 'critique', 'revision', 'final']).describe(`
+            Integrated stage combining thought and draft processes:
+            - 'initial': First analysis and draft (confidence: 0.5-0.7)
+            - 'critique': Combined analysis and review (requires isCritique)
+            - 'revision': Iterative improvement (requires isRevision)
+            - 'final': Complete solution (confidence >= 0.9)
+        `),
+      confidence: z.number().min(0).max(1).describe(`
+            Combined confidence score (thinking + drafting):
+            < 0.4: Critical issues
+            0.4-0.6: Basic progress
+            0.6-0.8: Good progress
+            0.8-0.9: High quality
+            >= 0.9: Excellent
+        `),
+      metadata: z.record(z.unknown()).describe("Additional stage-specific information for both thought and draft aspects").optional()
+   }).describe("Integrated categorization for both thinking and drafting processes").optional(),
+   confidence: z.number().min(0).max(1).describe("Overall confidence level").optional(),
+   context: contextSchema.describe("Additional context for integrated processing").optional(),
+   mcpFeatures: z.object({
+      sequentialThinking: z.boolean().optional(),
+      draftProcessing: z.boolean().optional(),
+      parallelProcessing: z.boolean().optional(),
+      monitoring: z.boolean().optional()
+   }).describe("Enabled MCP features affecting category processing").optional()
 };
 
 // Enhanced tool description

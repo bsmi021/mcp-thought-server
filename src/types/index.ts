@@ -101,3 +101,4 @@ export interface SequentialThoughtData {
     metrics?: ThoughtMetrics;
     context?: ThoughtContext;
 }
+

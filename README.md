@@ -1,8 +1,10 @@
 # Sequential Thinking Service
 
-A powerful TypeScript-based service for dynamic and reflective problem-solving through structured thinking. This system implements an advanced sequential thinking process with parallel processing capabilities, dynamic adaptation, and comprehensive metrics tracking.
+A powerful TypeScript-based service for dynamic and reflective problem-solving through structured thinking. This system implements an advanced sequential thinking process with parallel processing capabilities, dynamic adaptation, and comprehensive metrics tracking. Now featuring Chain of Draft (CoD) for iterative document refinement!
 
 ## 🚀 Features
+
+### Sequential Thinking
 
 - **Maximum Depth**: 12 sequential thoughts
 - **Parallel Processing**: Handle multiple thought chains simultaneously
@@ -11,6 +13,16 @@ A powerful TypeScript-based service for dynamic and reflective problem-solving t
 - **Dynamic Adaptation**: Automatically adjust processing based on performance
 - **Confidence-based Validation**: Ensure high-quality thought processing
 - **Comprehensive Metrics**: Track and analyze thinking patterns
+
+### Chain of Draft (CoD)
+
+- **Iterative Refinement**: Draft-Critique-Revision workflow
+- **Quality Tracking**: Confidence scoring for each draft
+- **Smart Categorization**: Automatic draft type detection
+- **Version History**: Track all drafts and revisions
+- **Performance Metrics**: Monitor processing efficiency
+- **Dynamic Adaptation**: Optimize based on draft quality
+- **Error Resilience**: Robust error handling and recovery
 
 ## 📦 Installation
 
@@ -21,6 +33,8 @@ yarn add mcp-thought-server
 ```
 
 ## 🔧 Basic Usage
+
+### Sequential Thinking
 
 ```typescript
 import { SequentialThinkingService } from 'mcp-thought-server';
@@ -38,6 +52,39 @@ const thought = {
 
 // Process the thought
 const result = service.processThought(thought);
+```
+
+### Chain of Draft
+
+```typescript
+import { ChainOfDraftService } from 'mcp-thought-server';
+
+// Initialize the service
+const service = new ChainOfDraftService();
+
+// Create initial draft
+const draft = {
+    content: "Initial document draft...",
+    draftNumber: 1,
+    totalDrafts: 3,
+    needsRevision: true
+};
+
+// Process the draft
+const result = await service.processDraft(draft);
+
+// Create a revision
+const revision = {
+    content: "Improved document content...",
+    draftNumber: 2,
+    totalDrafts: 3,
+    needsRevision: false,
+    isRevision: true,
+    revisesDraft: 1
+};
+
+// Process the revision
+const finalResult = await service.processDraft(revision);
 ```
 
 ## 🔥 Advanced Features
@@ -78,30 +125,34 @@ const branchThought = {
 };
 ```
 
-## ⚙️ Configuration
-
-### Core Configuration
+### Chain of Draft Configuration
 
 ```typescript
+// Core Configuration
 const config = {
-    maxDepth: 12,              // Maximum depth of thought chain
-    parallelTasks: true,       // Enable parallel processing
-    contextWindow: 163840,     // Context window size
-    branchingEnabled: true,    // Enable thought branching
-    revisionEnabled: true,     // Enable thought revision
-    confidenceThreshold: 0.85  // Minimum confidence threshold
+    maxDrafts: 10,             // Maximum number of drafts
+    contextWindow: 16384,      // Context window size
+    confidenceThreshold: 0.8,  // Minimum confidence threshold
+    enableParallelProcessing: false,
+    revisionEnabled: true
 };
-```
 
-### Enhancement Configuration
-
-```typescript
+// Enhancement Configuration
 const enhancementConfig = {
-    enableSummarization: true,    // Auto-summarize thought chains
-    thoughtCategorization: true,  // Categorize thoughts
+    enableSummarization: true,    // Auto-summarize drafts
+    draftCategorization: true,    // Categorize drafts
     progressTracking: true,       // Track progress metrics
     dynamicAdaptation: true      // Enable dynamic adaptation
 };
+
+// Debug Configuration
+const debugConfig = {
+    errorCapture: true,           // Capture and log errors
+    metricTracking: true,         // Track performance metrics
+    performanceMonitoring: true   // Monitor system performance
+};
+
+const service = new ChainOfDraftService(config, enhancementConfig, debugConfig);
 ```
 
 ## 📊 Performance Considerations
@@ -109,28 +160,41 @@ const enhancementConfig = {
 1. **Memory Usage**
    - Monitor heap usage with `metrics.resourceUsage`
    - Adjust context window size if needed
-   - Clean up completed branches
+   - Clean up completed branches and old drafts
 
 2. **Processing Time**
    - Track with `metrics.processingTime`
-   - Use parallel processing for independent thoughts
+   - Use parallel processing for independent thoughts/drafts
    - Monitor adaptation history
 
 3. **Confidence Thresholds**
-   - Default: 0.85 (85%)
+   - Sequential Thinking default: 0.85 (85%)
+   - Chain of Draft default: 0.80 (80%)
    - Adjusts automatically based on success rate
    - Can be configured manually
 
 ## 🐛 Error Handling
 
 ```typescript
+// Sequential Thinking
 try {
-    const result = service.processThought(thought);
+    const result = sequentialService.processThought(thought);
 } catch (error) {
     if (error.message.includes('confidence')) {
         // Handle confidence threshold errors
     } else if (error.message.includes('maxDepth')) {
         // Handle depth limit errors
+    }
+}
+
+// Chain of Draft
+try {
+    const result = await draftService.processDraft(draft);
+} catch (error) {
+    if (error.message.includes('validation')) {
+        // Handle draft validation errors
+    } else if (error.message.includes('revision')) {
+        // Handle revision-related errors
     }
 }
 ```

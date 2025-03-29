@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerTools } from "./tools/index.js";
 import { logger } from "./utils/index.js";
-import { SequentialThinkingService } from "./services/index.js";
+import { SequentialThinkingService, PrototypingService } from "./services/index.js";
 import { FeedbackLoopService } from "./services/feedback.js";
 import { FeedbackOptimizationService } from "./services/optimization.js";
 import feedbackConfig from "./config/feedback.js";
@@ -17,6 +17,23 @@ const capabilities = {
         feedback: {
             enabled: true,
             config: feedbackConfig
+        },
+        prototyping: {
+            enabled: true,
+            config: {
+                validation: {
+                    minConfidence: 0.7,
+                    autoValidate: true,
+                },
+                optimization: {
+                    minConfidence: 0.8,
+                    autoOptimize: true,
+                },
+                benchmarking: {
+                    enabled: true,
+                    interval: 3600000, // 1 hour
+                },
+            }
         }
     }
 }
@@ -32,6 +49,7 @@ export const createServer = (): McpServer => {
     const sequentialThinkingService = new SequentialThinkingService();
     const feedbackService = new FeedbackLoopService();
     const optimizationService = new FeedbackOptimizationService();
+    const prototypingService = new PrototypingService();
 
     // Set up error handler
     server.server.onerror = (error) => {
@@ -73,6 +91,29 @@ export const createServer = (): McpServer => {
         // Clean up on server close
         server.server.onclose = () => {
             clearInterval(monitoringInterval);
+        };
+    }
+
+    // Start prototype benchmarking if enabled
+    if (capabilities.capabilities.prototyping.enabled &&
+        capabilities.capabilities.prototyping.config.benchmarking.enabled) {
+        const benchmarkingInterval = setInterval(async () => {
+            try {
+                // Get all prototypes and benchmark them
+                const prototypes = Array.from(prototypingService['prototypes'].values());
+                for (const prototype of prototypes) {
+                    await prototypingService.benchmarkPrototype(prototype);
+                }
+            } catch (error) {
+                logger.error("Prototype benchmarking error:", error);
+            }
+        }, capabilities.capabilities.prototyping.config.benchmarking.interval);
+
+        // Clean up on server close
+        const existingOnClose = server.server.onclose;
+        server.server.onclose = () => {
+            if (existingOnClose) existingOnClose();
+            clearInterval(benchmarkingInterval);
         };
     }
 

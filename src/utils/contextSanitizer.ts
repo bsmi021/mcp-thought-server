@@ -4,8 +4,14 @@ import type { ThoughtContext, DraftContext } from '../types';
 // Zod schema for context validation
 export const contextSchema = z.object({
     problemScope: z.string().optional().default(''),
-    assumptions: z.array(z.string()).optional().default([]),
-    constraints: z.array(z.string()).optional().default([])
+    assumptions: z.preprocess(
+        (val) => Array.isArray(val) ? val.filter(item => typeof item === 'string' && item.length > 0) : [],
+        z.array(z.string()).optional().default([])
+    ),
+    constraints: z.preprocess(
+        (val) => Array.isArray(val) ? val.filter(item => typeof item === 'string' && item.length > 0) : [],
+        z.array(z.string()).optional().default([])
+    )
 });
 
 /**
@@ -29,9 +35,8 @@ export function sanitizeContext(context: unknown): ThoughtContext {
 
         return {
             problemScope: validatedContext.problemScope,
-            // Filter out any non-string values that might have slipped through
-            assumptions: validatedContext.assumptions.filter(item => typeof item === 'string'),
-            constraints: validatedContext.constraints.filter(item => typeof item === 'string')
+            assumptions: validatedContext.assumptions,
+            constraints: validatedContext.constraints
         };
     } catch (error) {
         // If validation fails, return safe defaults

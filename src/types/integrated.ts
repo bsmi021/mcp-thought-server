@@ -71,6 +71,12 @@ export interface IntegratedMetrics {
             averageProcessingTime: number;
             successRate: number;
             lastConfidence?: number;
+            lastCategory?: 'initial' | 'critique' | 'revision' | 'final';
+            categoryHistory: Array<{
+                category: 'initial' | 'critique' | 'revision' | 'final';
+                confidence: number;
+                timestamp: number;
+            }>;
         };
         draft: {
             totalDrafts: number;
@@ -126,14 +132,22 @@ export interface MCPEnhancements {
  */
 export interface IntegratedProcessingState {
     currentPhase: 'initialization' | 'processing' | 'completion' | 'error';
+    currentCategory: 'initial' | 'critique' | 'revision' | 'final';
+    currentConfidence: number;
     activeThreads: number;
     pendingOperations: string[];
     completedSteps: number;
     estimatedRemainingSteps: number;
+    minRequiredThoughts: number;
     adaptationHistory: Array<{
         timestamp: number;
         adjustment: string;
         reason: string;
+    }>;
+    categoryHistory: Array<{
+        category: 'initial' | 'critique' | 'revision' | 'final';
+        confidence: number;
+        timestamp: number;
     }>;
 }
 

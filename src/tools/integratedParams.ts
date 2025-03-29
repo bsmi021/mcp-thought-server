@@ -366,6 +366,9 @@ export const TOOL_PARAMS = {
             - 'critique': Combined analysis and review (requires isCritique)
             - 'revision': Iterative improvement (requires isRevision)
             - 'final': Complete solution (confidence >= 0.9)
+
+             NOTE: Terms like 'analysis', 'review', etc. are descriptions of what happens in these stages,
+            but are NOT valid stage names themselves. You MUST use one of the 4 stages listed above.
         `),
       confidence: z.number().min(0).max(1).describe(`
             ** Note the confidence score is a combined score of the thinking and drafting processes.

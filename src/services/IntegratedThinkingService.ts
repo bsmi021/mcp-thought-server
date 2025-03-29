@@ -296,8 +296,8 @@ export class IntegratedThinkingService {
             // Update metrics
             this.updateMetrics(startTime);
 
-            // Return integrated result
-            return {
+            // Filter response based on verbose settings
+            const response = this.filterResponseByVerboseSettings({
                 sequentialOutput,
                 draftOutput: draftResult,
                 mcpEnhancements,
@@ -308,13 +308,163 @@ export class IntegratedThinkingService {
                 },
                 context: input.context || {},
                 mcpFeatures: input.mcpFeatures || {}
-            };
+            });
+
+            return response;
         } catch (error) {
             this.handleIntegrationError(error);
             throw error;
         } finally {
             this.updateProcessingState('completion');
         }
+    }
+
+    /**
+     * Filter response based on verbose settings
+     */
+    private filterResponseByVerboseSettings(response: IntegratedResult): IntegratedResult {
+        // If full response is enabled, return everything
+        if (this.config.verboseConfig.showFullResponse) {
+            return response;
+        }
+
+        const filteredResponse: IntegratedResult = {
+            // Always include these core fields
+            sequentialOutput: {
+                thoughtNumber: response.sequentialOutput.thoughtNumber,
+                totalThoughts: response.sequentialOutput.totalThoughts,
+                nextThoughtNeeded: response.sequentialOutput.nextThoughtNeeded,
+                thought: response.sequentialOutput.thought,
+                confidence: response.sequentialOutput.confidence,
+                context: response.sequentialOutput.context || {}
+            },
+            draftOutput: {
+                content: response.draftOutput.content,
+                draftNumber: response.draftOutput.draftNumber,
+                totalDrafts: response.draftOutput.totalDrafts,
+                needsRevision: response.draftOutput.needsRevision,
+                category: response.draftOutput.category,
+                confidence: response.draftOutput.confidence,
+                nextStepNeeded: response.draftOutput.nextStepNeeded,
+                context: response.draftOutput.context || {}
+            },
+            category: response.category,
+            context: response.context,
+            mcpFeatures: response.mcpFeatures,
+            mcpEnhancements: response.mcpEnhancements,
+            metrics: {
+                startTime: response.metrics.startTime,
+                processingTimes: response.metrics.processingTimes,
+                successRate: response.metrics.successRate,
+                mcpIntegrationMetrics: {
+                    calls: 0,
+                    failures: 0,
+                    averageLatency: 0
+                },
+                serviceMetrics: {
+                    sequential: {
+                        totalThoughts: 0,
+                        averageProcessingTime: 0,
+                        successRate: 0,
+                        categoryHistory: []
+                    },
+                    draft: {
+                        totalDrafts: 0,
+                        averageProcessingTime: 0,
+                        successRate: 0
+                    }
+                }
+            }
+        };
+
+        // Add optional fields based on configuration
+        if (this.config.verboseConfig.showProcessingMetrics) {
+            filteredResponse.metrics = {
+                ...filteredResponse.metrics,
+                processingTimes: response.metrics.processingTimes,
+                successRate: response.metrics.successRate
+            };
+        }
+
+        if (this.config.verboseConfig.showServiceMetrics) {
+            filteredResponse.metrics.serviceMetrics = response.metrics.serviceMetrics;
+        }
+
+        if (this.config.verboseConfig.showMcpMetrics) {
+            filteredResponse.metrics.mcpIntegrationMetrics = response.metrics.mcpIntegrationMetrics;
+        }
+
+        if (this.config.verboseConfig.showAdaptationHistory && response.sequentialOutput.metrics?.dynamicAdaptation) {
+            if (!filteredResponse.sequentialOutput.metrics) {
+                filteredResponse.sequentialOutput.metrics = {
+                    processingTime: response.sequentialOutput.metrics.processingTime,
+                    resourceUsage: response.sequentialOutput.metrics.resourceUsage,
+                    dependencyChain: []
+                };
+            }
+            filteredResponse.sequentialOutput.metrics.dynamicAdaptation = response.sequentialOutput.metrics.dynamicAdaptation;
+        }
+
+        if (this.config.verboseConfig.showCategoryHistory) {
+            filteredResponse.metrics.serviceMetrics.sequential.categoryHistory =
+                response.metrics.serviceMetrics.sequential.categoryHistory;
+        }
+
+        if (this.config.verboseConfig.showDependencyChain && response.sequentialOutput.metrics?.dependencyChain) {
+            if (!filteredResponse.sequentialOutput.metrics) {
+                filteredResponse.sequentialOutput.metrics = {
+                    processingTime: response.sequentialOutput.metrics.processingTime,
+                    resourceUsage: response.sequentialOutput.metrics.resourceUsage,
+                    dependencyChain: []
+                };
+            }
+            filteredResponse.sequentialOutput.metrics.dependencyChain =
+                response.sequentialOutput.metrics.dependencyChain;
+        }
+
+        if (this.config.verboseConfig.showDebugMetrics && response.sequentialOutput.metrics) {
+            if (!filteredResponse.sequentialOutput.metrics) {
+                filteredResponse.sequentialOutput.metrics = {
+                    processingTime: response.sequentialOutput.metrics.processingTime,
+                    resourceUsage: response.sequentialOutput.metrics.resourceUsage,
+                    dependencyChain: []
+                };
+            }
+            filteredResponse.sequentialOutput.metrics = {
+                ...filteredResponse.sequentialOutput.metrics,
+                dynamicAdaptation: response.sequentialOutput.metrics.dynamicAdaptation,
+                processingState: response.sequentialOutput.metrics.processingState
+            };
+        }
+
+        // Memory usage and parallel task info are part of the metrics object
+        if (this.config.verboseConfig.showMemoryUsage && response.sequentialOutput.metrics?.dynamicAdaptation?.resourceOptimization) {
+            if (!filteredResponse.sequentialOutput.metrics) {
+                filteredResponse.sequentialOutput.metrics = {
+                    processingTime: response.sequentialOutput.metrics.processingTime,
+                    resourceUsage: response.sequentialOutput.metrics.resourceUsage,
+                    dependencyChain: []
+                };
+            }
+            if (!filteredResponse.sequentialOutput.metrics.dynamicAdaptation) {
+                filteredResponse.sequentialOutput.metrics.dynamicAdaptation = {
+                    ...response.sequentialOutput.metrics.dynamicAdaptation
+                };
+            }
+        }
+
+        if (this.config.verboseConfig.showParallelTaskInfo && response.sequentialOutput.metrics?.processingState) {
+            if (!filteredResponse.sequentialOutput.metrics) {
+                filteredResponse.sequentialOutput.metrics = {
+                    processingTime: response.sequentialOutput.metrics.processingTime,
+                    resourceUsage: response.sequentialOutput.metrics.resourceUsage,
+                    dependencyChain: []
+                };
+            }
+            filteredResponse.sequentialOutput.metrics.processingState = response.sequentialOutput.metrics.processingState;
+        }
+
+        return filteredResponse;
     }
 
     /**

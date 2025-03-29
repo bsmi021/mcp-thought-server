@@ -13,6 +13,30 @@ export interface IntegratedConfig {
     enhancementConfig: Partial<IntegratedEnhancementConfig>;
     debugConfig: Partial<IntegratedDebugConfig>;
     mcpConfig: MCPConfig;
+    verboseConfig: VerboseConfig;
+}
+
+/**
+ * Configuration for controlling verbose output
+ */
+export interface VerboseConfig {
+    // Core output controls
+    showProcessingMetrics: boolean;      // Show processing time and resource usage
+    showServiceMetrics: boolean;         // Show service-specific metrics
+    showMcpMetrics: boolean;            // Show MCP integration metrics
+
+    // Detailed output controls
+    showAdaptationHistory: boolean;     // Show adaptation history in response
+    showCategoryHistory: boolean;       // Show category transition history
+    showDependencyChain: boolean;       // Show thought/draft dependencies
+    showDebugMetrics: boolean;          // Show detailed debug metrics
+
+    // Performance monitoring
+    showMemoryUsage: boolean;           // Show memory usage statistics
+    showParallelTaskInfo: boolean;      // Show parallel processing information
+
+    // Default to true for backward compatibility
+    showFullResponse: boolean;          // Show complete response (overrides other settings if true)
 }
 
 /**
@@ -192,6 +216,18 @@ export const integratedConfigSchema = z.object({
             parallelProcessing: z.boolean(),
             monitoring: z.boolean()
         })
+    }),
+    verboseConfig: z.object({
+        showProcessingMetrics: z.boolean(),
+        showServiceMetrics: z.boolean(),
+        showMcpMetrics: z.boolean(),
+        showAdaptationHistory: z.boolean(),
+        showCategoryHistory: z.boolean(),
+        showDependencyChain: z.boolean(),
+        showDebugMetrics: z.boolean(),
+        showMemoryUsage: z.boolean(),
+        showParallelTaskInfo: z.boolean(),
+        showFullResponse: z.boolean()
     })
 });
 

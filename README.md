@@ -1,421 +1,214 @@
-# Big Brain Thinking Service
+# MCP Thought Server
 
-A powerful TypeScript-based service that revolutionizes problem-solving through advanced cognitive modeling and dynamic adaptation. This system implements three sophisticated thinking paradigms: Sequential Thinking for structured analysis, Chain of Draft (CoD) for iterative refinement, and Integrated Thinking for unified cognitive processing. Each model is built on solid theoretical foundations and practical applications in artificial reasoning.
+A powerful server for managing and processing thoughts, perspectives, and drafts.
 
-## 🧠 Theoretical Foundations
+## Features
 
-### Sequential Thinking Model
+### 1. Perspective Analysis System (PAS)
 
-Sequential Thinking is based on the cognitive science principle of structured, hierarchical problem decomposition. It implements:
+The Perspective Analysis System (PAS) is a powerful tool for analyzing, comparing, and synthesizing different perspectives in a system. It helps identify common ground, differences, and potential conflicts between various stakeholders' viewpoints.
 
-- **Cognitive Load Theory**: Manages complexity through systematic thought segmentation
-- **Metacognitive Processing**: Self-monitoring and adaptation of thinking strategies
-- **Parallel Distributed Processing**: Enables simultaneous thought path exploration
-- **Dynamic Systems Theory**: Adapts processing based on real-time feedback
-- **Information Processing Theory**: Optimizes thought flow and cognitive resource allocation
+Key features:
 
-### Chain of Draft (CoD) Model
+- Perspective analysis with configurable confidence thresholds
+- Multi-perspective comparison with similarity and conflict metrics
+- Perspective synthesis to find common ground and generate recommendations
+- Perspective optimization to reduce complexity and improve clarity
+- Conflict resolution with step-by-step guidance
+- Validation with configurable rules and relationship checks
 
-CoD implements iterative refinement based on established writing and thinking methodologies:
-
-- **Recursive Refinement Theory**: Systematic improvement through structured iteration
-- **Quality-Driven Development**: Confidence-based progression through drafts
-- **Cognitive Apprenticeship**: Learning from previous drafts and revisions
-- **Metacognitive Regulation**: Self-monitoring of draft quality and progress
-- **Distributed Cognition**: Leveraging collective knowledge across drafts
-
-### Integrated Thinking Model
-
-Combines multiple cognitive paradigms for enhanced problem-solving:
-
-- **Cognitive Integration Theory**: Unified processing of multiple thought streams
-- **Resource Allocation Theory**: Optimal distribution of cognitive resources
-- **Adaptive Processing Framework**: Dynamic adjustment of thinking strategies
-- **Cross-Domain Synthesis**: Integration of different cognitive approaches
-- **Emergent Intelligence**: Enhanced capabilities through model interaction
-
-## 🚀 Core Services
-
-### Sequential Thinking
-
-- **Maximum Depth**: 12 sequential thoughts
-- **Parallel Processing**: Handle multiple thought chains simultaneously
-- **Large Context Window**: 163,840 tokens
-- **Advanced Branching**: Create and manage multiple thought paths
-- **Dynamic Adaptation**: Automatically adjust processing based on performance
-- **Confidence-based Validation**: Ensure high-quality thought processing
-- **Comprehensive Metrics**: Track and analyze thinking patterns
-- **Context Sanitization**: Enhanced input validation and sanitization
-- **Confidence Calculation**: Improved accuracy in thought confidence scoring
-
-### Chain of Draft (CoD)
-
-- **Iterative Refinement**: Draft-Critique-Revision workflow
-- **Quality Tracking**: Confidence scoring for each draft
-- **Smart Categorization**: Automatic draft type detection
-- **Version History**: Track all drafts and revisions
-- **Performance Metrics**: Monitor processing efficiency
-- **Dynamic Adaptation**: Optimize based on draft quality
-- **Error Resilience**: Robust error handling and recovery
-- **Context Management**: Enhanced context handling and validation
-
-### Integrated Thinking
-
-- **Combined Processing**: Unified draft and thought processing
-- **Cross-service Optimization**: Shared resource management
-- **Enhanced Metrics**: Combined performance tracking
-- **Adaptive Workflows**: Dynamic service selection
-- **Context Preservation**: Seamless context sharing
-- **Parallel Execution**: Multi-service concurrent processing
-
-## 📊 Performance Scorecards
-
-### Sequential Thinking Service
-
-- **Average Processing Time**: 150ms per thought
-- **Memory Usage**: ~45MB base, scales with context size
-- **Confidence Score**: 0.92 average across test suite
-- **Error Rate**: < 0.1% in production
-- **Context Window Utilization**: 85% efficiency
-- **Parallel Processing Overhead**: +5% per additional thread
-
-### Chain of Draft Service
-
-- **Draft Processing Time**: 200ms average
-- **Revision Efficiency**: 95% success rate
-- **Memory Footprint**: ~60MB with history
-- **Confidence Threshold**: 0.85 maintained
-- **Context Preservation**: 99.9% accuracy
-- **Error Recovery**: 98% success rate
-
-### Integrated Thinking Service
-
-- **Combined Processing Time**: 275ms average
-- **Resource Optimization**: 30% better than separate services
-- **Cross-service Confidence**: 0.90 average
-- **Memory Efficiency**: 25% reduction vs separate
-- **Context Switch Cost**: < 10ms
-- **Error Handling Success**: 99.5%
-
-## 🔬 Advanced Implementation Details
-
-### Sequential Thinking Architecture
+#### Usage Example
 
 ```typescript
-interface ThoughtProcess {
-  cognitive: {
-    depthLimit: number;      // Maximum cognitive depth
-    branchFactor: number;    // Parallel thought capacity
-    adaptiveThreshold: number; // Dynamic adjustment threshold
-  };
-  metacognitive: {
-    confidenceTracking: boolean;
-    errorCorrection: boolean;
-    learningRate: number;
-  };
-  performance: {
-    resourceMonitoring: boolean;
-    optimizationStrategy: 'aggressive' | 'balanced' | 'conservative';
-    metricCollection: string[];
-  };
-}
-```
+import { perspectiveAnalysisApi } from './src/services/perspectiveAnalysisApi';
 
-### Chain of Draft Implementation
-
-```typescript
-interface DraftingSystem {
-  iteration: {
-    maxRevisions: number;
-    qualityThreshold: number;
-    adaptiveRefinement: boolean;
-  };
-  analysis: {
-    contextPreservation: boolean;
-    semanticTracking: boolean;
-    confidenceScoring: boolean;
-  };
-  optimization: {
-    resourceEfficiency: number;
-    parallelProcessing: boolean;
-    cacheStrategy: 'aggressive' | 'normal' | 'minimal';
-  };
-}
-```
-
-### Integrated Thinking Framework
-
-```typescript
-interface IntegratedSystem {
-  coordination: {
-    modelSynergy: boolean;
-    resourceSharing: boolean;
-    crossModelLearning: boolean;
-  };
-  optimization: {
-    globalConfidence: number;
-    adaptiveRouting: boolean;
-    performanceBalancing: boolean;
-  };
-  monitoring: {
-    systemMetrics: string[];
-    errorHandling: 'graceful' | 'strict' | 'adaptive';
-    healthChecks: boolean;
-  };
-}
-```
-
-## 🔧 Usage Examples
-
-### Complex Problem Decomposition
-
-```typescript
-const sequentialService = new SequentialThinkingService({
-  maxDepth: 12,
-  parallelThoughts: 4,
-  confidenceThreshold: 0.85,
-  adaptiveProcessing: {
-    enabled: true,
-    learningRate: 0.1,
-    optimizationStrategy: 'balanced'
-  }
-});
-
-const problemAnalysis = await sequentialService.analyze({
-  problem: "Complex system optimization",
-  constraints: ["time", "resources", "quality"],
-  context: {
-    domainKnowledge: true,
-    historicalData: true
-  }
-});
-```
-
-### Document Refinement Process
-
-```typescript
-const draftService = new ChainOfDraftService({
-  iterative: {
-    maxRevisions: 5,
-    qualityThreshold: 0.9,
-    preserveHistory: true
-  },
-  enhancement: {
-    semanticAnalysis: true,
-    styleConsistency: true,
-    contentOptimization: true
-  }
-});
-
-const document = await draftService.refine({
-  content: initialDraft,
-  targetMetrics: {
-    clarity: 0.9,
-    coherence: 0.85,
-    completeness: 0.95
-  }
-});
-```
-
-### Integrated Problem Solving
-
-```typescript
-const integratedService = new IntegratedThinkingService({
-  models: {
-    sequential: true,
-    chainOfDraft: true,
-    customModels: []
-  },
-  optimization: {
-    resourceAllocation: 'dynamic',
-    confidenceThreshold: 0.85,
-    adaptiveRouting: true
-  }
-});
-
-const solution = await integratedService.solve({
-  problem: complexProblem,
-  requirements: requirements,
-  constraints: constraints,
-  preferences: userPreferences
-});
-```
-
-## 🔍 Real-World Applications
-
-### 1. Software Architecture Design
-
-- Problem decomposition through Sequential Thinking
-- Design document refinement via Chain of Draft
-- Integration testing through Integrated Thinking
-- Performance: 95% success rate in complex system design
-
-### 2. Content Generation and Refinement
-
-- Multi-stage content creation
-- Automated quality assessment
-- Iterative improvement
-- Results: 30% faster content production, 40% higher quality scores
-
-### 3. Decision Support Systems
-
-- Complex decision analysis
-- Multi-factor optimization
-- Real-time adaptation
-- Impact: 45% reduction in decision-making time
-
-## 📈 Performance Optimization
-
-### Memory Management
-
-```typescript
-interface MemoryOptimization {
-  contextWindow: number;     // Adjustable context window
-  cacheStrategy: string;     // Caching approach
-  resourceLimits: {
-    maxMemory: number;      // Memory ceiling
-    cleanupThreshold: number; // Cleanup trigger point
-  };
-}
-```
-
-### Processing Optimization
-
-```typescript
-interface ProcessingOptimization {
-  parallelization: {
-    maxThreads: number;     // Maximum parallel threads
-    loadBalancing: boolean; // Load balancing enabled
-  };
-  adaptation: {
-    learningRate: number;   // Adaptation speed
-    optimizationGoal: string; // Target metric
-  };
-}
-```
-
-## 📊 Performance Considerations
-
-1. **Memory Usage**
-   - Monitor heap usage with `metrics.resourceUsage`
-   - Adjust context window size if needed
-   - Clean up completed branches and old drafts
-
-2. **Processing Time**
-   - Track with `metrics.processingTime`
-   - Use parallel processing for independent thoughts/drafts
-   - Monitor adaptation history
-
-3. **Confidence Thresholds**
-   - Sequential Thinking default: 0.85 (85%)
-   - Chain of Draft default: 0.80 (80%)
-   - Adjusts automatically based on success rate
-   - Can be configured manually
-
-## 🐛 Error Handling
-
-```typescript
-// Sequential Thinking
-try {
-    const result = sequentialService.processThought(thought);
-} catch (error) {
-    if (error.message.includes('confidence')) {
-        // Handle confidence threshold errors
-    } else if (error.message.includes('maxDepth')) {
-        // Handle depth limit errors
+// Analyze a perspective
+const analysisResult = await perspectiveAnalysisApi.analyzePerspective({
+    input: {
+        type: {
+            category: 'stakeholder',
+            subcategory: 'primary',
+            weight: 0.8
+        },
+        viewpoint: 'User Experience',
+        stakeholder: {
+            id: '123e4567-e89b-12d3-a456-426614174000',
+            role: 'End User',
+            influence: 0.9,
+            interests: ['Ease of use', 'Performance', 'Reliability']
+        },
+        requirements: [
+            {
+                description: 'Fast response time',
+                priority: 9,
+                rationale: 'Users expect instant feedback',
+                validation: {
+                    criteria: 'Response time < 200ms',
+                    method: 'Performance testing',
+                    status: 'pending'
+                }
+            }
+        ],
+        constraints: [
+            {
+                type: 'technical',
+                description: 'Must work on mobile devices',
+                impact: 0.8,
+                mitigation: 'Use responsive design'
+            }
+        ],
+        priorities: [
+            {
+                item: 'Mobile optimization',
+                level: 4,
+                justification: 'High mobile user base'
+            }
+        ]
+    },
+    config: {
+        confidenceThreshold: 0.7,
+        maxIterations: 3,
+        includeMetadata: true
     }
-}
+});
 
-// Chain of Draft
-try {
-    const result = await draftService.processDraft(draft);
-} catch (error) {
-    if (error.message.includes('validation')) {
-        // Handle draft validation errors
-    } else if (error.message.includes('revision')) {
-        // Handle revision-related errors
+// Compare perspectives
+const comparisonResult = await perspectiveAnalysisApi.comparePerspectives({
+    perspectives: [perspective1, perspective2],
+    config: {
+        similarityThreshold: 0.7,
+        conflictThreshold: 0.3,
+        includeMetrics: true
     }
-}
+});
+
+// Synthesize perspectives
+const synthesisResult = await perspectiveAnalysisApi.synthesizePerspectives({
+    perspectives: [perspective1, perspective2, perspective3],
+    config: {
+        minCommonGroundStrength: 0.6,
+        maxConflicts: 5,
+        priorityThreshold: 3
+    }
+});
+
+// Optimize perspectives
+const optimizationResult = await perspectiveAnalysisApi.optimizePerspectives({
+    perspectives: [perspective1, perspective2]
+});
+
+// Resolve conflicts
+const resolutionResult = await perspectiveAnalysisApi.resolveConflicts({
+    conflict: {
+        description: 'Conflicting requirements',
+        perspectives: ['123e4567-e89b-12d3-a456-426614174000', '123e4567-e89b-12d3-a456-426614174001'],
+        severity: 0.8,
+        resolutionOptions: ['Option A', 'Option B']
+    },
+    perspectives: [perspective1, perspective2]
+});
+
+// Validate perspectives
+const validationResult = await perspectiveAnalysisApi.validatePerspectives({
+    perspectives: [perspective1, perspective2],
+    config: {
+        strictMode: true,
+        validateRelationships: true,
+        maxValidationDepth: 3
+    }
+});
 ```
 
-## 📝 Contributing
+### 2. Chain of Draft (CoD)
+
+Coming soon...
+
+### 3. Sequential Thinking
+
+Coming soon...
+
+## Installation
+
+```bash
+npm install
+```
+
+## Development
+
+```bash
+# Build the project
+npm run build
+
+# Run tests
+npm test
+
+# Start the server
+npm start
+```
+
+## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🤝 Support
+## Environment Variables
 
-For support, issues, or feature requests, please file an issue in the GitHub repository.
+### Core Configuration
 
-## 🔍 Recent Updates
+- `MCP_SERVER_URL` - MCP server URL (default: <http://localhost:3000>)
+- `MCP_API_KEY` - API key for MCP server authentication
+- `MCP_MAX_RETRIES` - Maximum number of retries for failed requests (default: 3)
+- `MCP_TIMEOUT` - Request timeout in milliseconds (default: 30000)
 
-### March 2024
+### Verbose Output Control
 
-- Added context sanitization functionality
-- Enhanced confidence calculation algorithms
-- Improved error logging and handling
-- Integrated performance monitoring
-- Enhanced cross-service optimization
-- Added comprehensive stress testing suite
-- Improved documentation and examples
+The following environment variables control what information is included in the response payload:
 
-## 📈 Stress Test Results
+#### Core Output Controls
 
-Recent stress testing (March 2024) demonstrated:
+- `MCP_SHOW_PROCESSING_METRICS` - Show processing time and resource usage (default: true)
+- `MCP_SHOW_SERVICE_METRICS` - Show service-specific metrics (default: true)
+- `MCP_SHOW_MCP_METRICS` - Show MCP integration metrics (default: true)
 
-- Sustained performance under 10x normal load
-- Memory usage optimization (30% reduction)
-- Error handling improvements (99.9% success)
-- Context preservation across services
-- Parallel processing optimization
-- Resource utilization efficiency
+#### Detailed Output Controls
 
-For detailed performance metrics and stress test results, see the documentation in `/src/tests/stress/README.md`.
+- `MCP_SHOW_ADAPTATION_HISTORY` - Show adaptation history in response (default: false)
+- `MCP_SHOW_CATEGORY_HISTORY` - Show category transition history (default: false)
+- `MCP_SHOW_DEPENDENCY_CHAIN` - Show thought/draft dependencies (default: false)
+- `MCP_SHOW_DEBUG_METRICS` - Show detailed debug metrics (default: false)
 
-## 🎓 Learning Resources
+#### Performance Monitoring
 
-### Documentation
+- `MCP_SHOW_MEMORY_USAGE` - Show memory usage statistics (default: false)
+- `MCP_SHOW_PARALLEL_TASK_INFO` - Show parallel processing information (default: false)
 
-- Comprehensive API Reference
-- Implementation Guides
-- Best Practices
-- Performance Tuning
+#### Backward Compatibility
 
-### Examples and Tutorials
+- `MCP_SHOW_FULL_RESPONSE` - Show complete response (overrides other settings if true) (default: true)
 
-- Getting Started Guide
-- Advanced Usage Patterns
-- Integration Examples
-- Performance Optimization
+### Example Usage
 
-### Community and Support
+To run with minimal output:
 
-- GitHub Discussions
-- Issue Tracking
-- Community Projects
-- Regular Updates
+```bash
+export MCP_SHOW_FULL_RESPONSE=false
+export MCP_SHOW_PROCESSING_METRICS=true
+export MCP_SHOW_SERVICE_METRICS=true
+export MCP_SHOW_MCP_METRICS=false
+```
 
-## 🔮 Future Developments
+To enable detailed debugging:
 
-### Planned Features
-
-- Enhanced parallel processing
-- Extended model integration
-- Advanced optimization techniques
-- Expanded cognitive capabilities
-
-### Research Directions
-
-- Novel thinking paradigms
-- Performance optimization
-- Resource efficiency
-- Cross-model synergy
-
-For detailed performance metrics and stress test results, see the documentation in `/src/tests/stress/README.md`.
+```bash
+export MCP_SHOW_FULL_RESPONSE=false
+export MCP_SHOW_DEBUG_METRICS=true
+export MCP_SHOW_MEMORY_USAGE=true
+export MCP_SHOW_DEPENDENCY_CHAIN=true
+```

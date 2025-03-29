@@ -440,14 +440,100 @@ Processing Capabilities:
    - State validation
    - MCP debugging
 
-Usage Guidelines:
-1. Start with clear problem definition
-2. Configure MCP features as needed
-3. Follow the integrated draft-thought cycle
-4. Monitor confidence levels
-5. Track progress and metrics
-6. Leverage parallel processing
-7. Use revision system for refinement
+Suggested Order of Actions:
+1. Problem Definition and Initialization
+   - Define clear problem scope
+   - Set initial parameters (thoughtNumber=1, draftNumber=1)
+   - Configure MCP features
+   - Example:
+     {
+       content: "Initial analysis of system performance",
+       thoughtNumber: 1,
+       totalThoughts: 4,
+       draftNumber: 1,
+       totalDrafts: 3,
+       category: {
+         type: 'initial',
+         confidence: 0.6
+       },
+       context: {
+         problemScope: "Performance Optimization",
+         assumptions: ["High traffic system", "Resource constraints"]
+       }
+     }
+
+2. Analysis and First Draft
+   - Process initial thoughts
+   - Generate first draft
+   - Set critiqueFocus if needed
+   - Example:
+     {
+       content: "Identified bottlenecks in database queries",
+       thoughtNumber: 2,
+       totalThoughts: 4,
+       draftNumber: 1,
+       totalDrafts: 3,
+       category: {
+         type: 'critique',
+         confidence: 0.7
+       },
+       isCritique: true,
+       critiqueFocus: "performance_bottlenecks"
+     }
+
+3. Revision and Refinement
+   - Review critique results
+   - Apply necessary revisions
+   - Track confidence levels
+   - Example:
+     {
+       content: "Implementing caching layer for frequent queries",
+       thoughtNumber: 3,
+       totalThoughts: 4,
+       draftNumber: 2,
+       totalDrafts: 3,
+       category: {
+         type: 'revision',
+         confidence: 0.8
+       },
+       isRevision: true,
+       revisesDraft: 1
+     }
+
+4. Final Integration and Validation
+   - Combine all insights
+   - Validate solution
+   - Ensure high confidence
+   - Example:
+     {
+       content: "Complete optimization solution with monitoring",
+       thoughtNumber: 4,
+       totalThoughts: 4,
+       draftNumber: 3,
+       totalDrafts: 3,
+       category: {
+         type: 'final',
+         confidence: 0.95
+       },
+       needsRevision: false,
+       nextStepNeeded: false
+     }
+
+Best Practices:
+1. Always start with 'initial' category type
+2. Use critique phase for thorough analysis
+3. Track confidence scores throughout process
+4. Enable relevant MCP features for optimization
+5. Maintain context through thought chain
+6. Use revision phase for significant improvements
+7. Ensure final phase has confidence >= 0.9
+
+Error Handling:
+1. Monitor confidence scores for each phase
+2. Increase totalThoughts if more analysis needed
+3. Use revision phase for error correction
+4. Track and validate context inheritance
+5. Enable monitoring for performance issues
 
 The tool maintains backward compatibility while providing enhanced integrated capabilities for complex processing scenarios.`;
 

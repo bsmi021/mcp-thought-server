@@ -1,553 +1,154 @@
 import { z } from "zod";
 import { contextSchema } from '../utils/index.js';
 
-/**
- * Sequential Thinking Tool
- * @module sequentialThinkingParams
- * 
- * Implements an advanced sequential thinking process with:
- * - Category-based thought progression
- * - Confidence scoring and validation
- * - Dynamic adaptation and branching
- * - Resource optimization
- * - Error recovery
- */
-
-/**
- * Tool identifier
- */
 export const TOOL_NAME = "sequentialThinking";
 
-/* PARAMETERS EXPLAINED
-
-Required Parameters:
-------------------
-thought: Your current thinking step (REQUIRED)
-  * Regular analytical steps (e.g., "Analyzing the root cause of the performance issue")
-  * Revisions of previous thoughts (e.g., "Revising thought 2's approach based on new data")
-  * Questions about previous decisions (e.g., "Should we reconsider the caching strategy?")
-  * Realizations about needing more analysis (e.g., "Need to investigate memory usage patterns")
-  * Changes in approach (e.g., "Switching to an event-driven architecture")
-  * Hypothesis generation (e.g., "The latency might be caused by database connection pooling")
-  * Hypothesis verification (e.g., "Testing the connection pooling hypothesis")
-  * Error handling considerations (e.g., "Evaluating potential failure modes")
-  * Performance optimizations (e.g., "Identifying bottlenecks in the current approach")
-
-nextThoughtNeeded: Boolean flag for continuation (REQUIRED)
-  * true = More thinking steps needed
-  * false = Current branch of thinking is complete
-  * Note: Can be true even at what seemed like the end if new insights emerge
-  * Used for flow control and branch management
-  * Affects confidence calculations in subsequent thoughts
-
-thoughtNumber: Position in sequence (REQUIRED)
-  * Starts at 1 and increments
-  * Can go beyond initial totalThoughts if needed
-  * Must be sequential within each branch
-  * Used for dependency tracking and validation
-  * Critical for confidence calculation context
-
-totalThoughts: Estimated total steps needed (REQUIRED)
-  * Initial estimate that can be adjusted
-  * Minimum value: 1
-  * Can increase/decrease as analysis evolves
-  * Affects resource allocation and parallel processing
-  * Used in confidence threshold calculations
-
-Optional Parameters:
-------------------
-isRevision: Indicates thought revision
-  * true = This thought revises a previous one
-  * Must be used with revisesThought parameter
-  * Helps track changes in thinking process
-  * Affects confidence calculations
-  * May trigger automatic threshold adjustments
-
-revisesThought: Target thought number for revision
-  * Required when isRevision is true
-  * Must reference an existing thought number
-  * Example: revisesThought: 2 revises the second thought
-  * Used for dependency tracking
-  * Affects confidence inheritance
-
-branchFromThought: Starting point for new thinking branch
-  * Used for parallel lines of thought
-  * Must reference an existing thought number
-  * Creates a new branch of analysis
-  * Inherits confidence context from parent
-  * Supports parallel processing when enabled
-
-branchId: Branch identifier
-  * Required when branching
-  * Format: string (e.g., "performance-analysis", "security-review")
-  * Helps track parallel thought processes
-  * Used in confidence context management
-  * Critical for parallel execution
-
-needsMoreThoughts: Flag for extending analysis
-  * true = Need to increase totalThoughts
-  * Used when reaching the end but realizing more thoughts needed
-  * Triggers automatic adjustment of totalThoughts
-  * May affect confidence thresholds
-  * Influences resource allocation
-
-category: Thought classification and metadata
-  * type: One of ['analysis', 'hypothesis', 'verification', 'revision', 'solution']
-  * confidence: Number between 0-1 indicating certainty
-  * metadata: Optional additional information
-  * Helps with thought organization and tracking
-  * Used in confidence calculations
-  * Affects processing priority
-  * Influences parallel execution decisions
-
-confidence: Certainty level
-  * Range: 0-1 (0 = uncertain, 1 = certain)
-  * Used for validation and decision making
-  * Affects thought processing and branching
-
-context: Additional thought context
-  * problemScope: Main focus area
-  * assumptions: Array of underlying assumptions
-  * constraints: Array of limitations/requirements
-  * Helps maintain context across thoughts
-
-Sequential Thinking Categories:
----------------------------
-The sequential thinking tool uses distinct category types optimized for
-analytical problem-solving and hypothesis testing:
-
-1. 'analysis' - Initial problem examination
-   - Used for breaking down complex problems
-   - Focus on understanding and scope definition
-   - Typically starts with moderate confidence (0.5-0.7)
-   Example:
-   {
-     thought: "Analyzing system performance bottlenecks",
-     thoughtNumber: 1,
-     totalThoughts: 5,
-     category: {
-       type: 'analysis',
-       confidence: 0.6,
-       metadata: { 
-         focus_areas: ['database', 'network'],
-         analysis_type: 'performance'
-       }
-     }
-   }
-
-2. 'hypothesis' - Proposed solutions/explanations
-   - Used for generating potential solutions
-   - Must be testable and specific
-   - Confidence based on supporting evidence
-   Example:
-   {
-     thought: "Database connection pooling may be insufficient",
-     thoughtNumber: 2,
-     totalThoughts: 5,
-     category: {
-       type: 'hypothesis',
-       confidence: 0.7,
-       metadata: { 
-         evidence: ['high wait times', 'connection timeouts'],
-         testable_aspects: ['pool size', 'timeout settings']
-       }
-     }
-   }
-
-3. 'verification' - Testing and validation
-   - Used to test hypotheses
-   - Requires specific test criteria
-   - Confidence based on test results
-   Example:
-   {
-     thought: "Testing connection pool size impact",
-     thoughtNumber: 3,
-     totalThoughts: 5,
-     category: {
-       type: 'verification',
-       confidence: 0.85,
-       metadata: { 
-         test_parameters: ['pool_size', 'request_rate'],
-         success_criteria: ['response_time < 100ms']
-       }
-     }
-   }
-
-4. 'revision' - Thought modification
-   - Used when updating previous thoughts
-   - Must reference original thought
-   - Higher confidence than original required
-   Example:
-   {
-     thought: "Revising hypothesis based on test results",
-     thoughtNumber: 4,
-     totalThoughts: 5,
-     category: {
-       type: 'revision',
-       confidence: 0.9,
-       metadata: { 
-         original_thought: 2,
-         test_results: ['pool size impact confirmed'],
-         revision_basis: 'verification_success'
-       }
-     },
-     isRevision: true,
-     revisesThought: 2
-   }
-
-5. 'solution' - Final validated solution
-   - Used for confirmed solutions
-   - Requires high confidence (>= 0.9)
-   - Must have verification support
-   Example:
-   {
-     thought: "Implementing optimized connection pool",
-     thoughtNumber: 5,
-     totalThoughts: 5,
-     category: {
-       type: 'solution',
-       confidence: 0.95,
-       metadata: { 
-         verified_by: ['performance tests', 'load tests'],
-         implementation_ready: true
-       }
-     }
-   }
-
-Confidence Scoring in Sequential Thinking:
---------------------------------------
-Confidence scores are based on the following factors:
-
-1. Analysis Phase (0-0.7):
-   - Problem understanding: 0-0.3
-   - Scope definition: 0-0.2
-   - Context awareness: 0-0.2
-
-2. Hypothesis Phase (0.3-0.8):
-   - Evidence strength: 0-0.3
-   - Testability: 0-0.3
-   - Feasibility: 0-0.2
-
-3. Verification Phase (0.6-0.9):
-   - Test coverage: 0-0.3
-   - Result clarity: 0-0.3
-   - Reproducibility: 0-0.3
-
-4. Solution Phase (0.8-1.0):
-   - Implementation readiness: 0-0.3
-   - Validation completeness: 0-0.4
-   - Documentation quality: 0-0.3
-
-Score Interpretation:
-- < 0.4: Insufficient evidence/analysis
-- 0.4-0.6: Basic understanding established
-- 0.6-0.8: Strong analysis/hypothesis
-- 0.8-0.9: Verified understanding
-- >= 0.9: Validated solution
-
-Category Progression Rules:
-------------------------
-1. Analysis -> Hypothesis:
-   - Requires clear problem understanding
-   - Must identify testable aspects
-   - Minimum confidence: 0.6
-
-2. Hypothesis -> Verification:
-   - Requires testable hypothesis
-   - Must define success criteria
-   - Minimum confidence: 0.7
-
-3. Verification -> Solution/Revision:
-   - Success: Move to solution (conf >= 0.9)
-   - Failure: Move to revision
-   - Must maintain verification data
-
-4. Revision -> Verification:
-   - Must address verification failures
-   - Requires new test criteria
-   - Confidence reset to hypothesis level
-
-Branching and Parallel Processing:
--------------------------------
-1. Parallel Analysis:
-   - Multiple aspects simultaneously
-   - Independent verification paths
-   - Shared context maintenance
-
-2. Branch Management:
-   - Branch on multiple hypotheses
-   - Independent verification tracks
-   - Confidence inheritance rules
-
-3. Resource Optimization:
-   - Priority based on confidence
-   - Resource allocation rules
-   - Performance monitoring
-*/
-
-// Enhanced tool parameters schema with sequential thinking categories
+// Zod schema defining the input parameters for the sequentialThinking tool.
+// Descriptions are crucial for LLM understanding and correct usage.
 export const TOOL_PARAMS = {
-  thought: z.string().describe("Your current thinking step, which can include: * Regular analytical steps * Revisions of previous thoughts * Questions about previous decisions * Realizations about needing more analysis * Changes in approach * Hypothesis generation * Hypothesis verification * Error handling * Performance considerations"),
-  nextThoughtNeeded: z.boolean().describe("True if you need more thinking, even if at what seemed like the end"),
-  thoughtNumber: z.number().min(1).describe("Current number in sequence (can go beyond initial total if needed)"),
-  totalThoughts: z.number().min(1).describe("Current estimate of thoughts needed (can be adjusted up/down)"),
-  isRevision: z.boolean().describe("A boolean indicating if this thought revises previous thinking").optional(),
-  revisesThought: z.number().min(1).describe("If isRevision is true, which thought number is being reconsidered").optional(),
-  branchFromThought: z.number().min(1).describe("If branching, which thought number is the branching point").optional(),
-  branchId: z.string().describe("Identifier for the current branch (if any)").optional(),
-  needsMoreThoughts: z.boolean().describe("If reaching end but realizing more thoughts needed").optional(),
+  thought: z.string().describe("(Required) The content of the current thinking step (e.g., analysis, hypothesis, revision)."),
+  nextThoughtNeeded: z.boolean().describe("(Required) Boolean flag indicating if further thinking steps are required in the current sequence/branch."),
+  thoughtNumber: z.number().min(1).describe("(Required) The sequential number of this thought within its branch (starts at 1)."),
+  totalThoughts: z.number().min(1).describe("(Required) The current estimated total number of thoughts needed for this sequence/branch (can be adjusted)."),
+  isRevision: z.boolean().describe("Set to true if this thought revises a previous thought.").optional(),
+  revisesThought: z.number().min(1).describe("*(Required if isRevision is true)*. Specifies the thoughtNumber being revised within the same branch. Must be less than the current thoughtNumber.").optional(),
+  branchFromThought: z.number().min(1).describe("If starting a new branch of thinking, specifies the thoughtNumber from the parent branch to branch from.").optional(),
+  branchId: z.string().describe("*(Required if branchFromThought is provided)*. A unique string identifier for the new branch being created (e.g., 'performance-analysis', 'security-review').").optional(),
+  needsMoreThoughts: z.boolean().describe("Set to true if the current analysis indicates that the 'totalThoughts' estimate needs to be increased.").optional(),
   category: z.object({
-    type: z.enum(['analysis', 'hypothesis', 'verification', 'revision', 'solution']).describe(`
-         Sequential thinking stage:
-         - 'analysis': Problem examination (confidence: 0.5-0.7)
-         - 'hypothesis': Proposed solution (confidence: 0.3-0.8)
-         - 'verification': Testing phase (confidence: 0.6-0.9)
-         - 'revision': Thought update (requires isRevision)
-         - 'solution': Validated result (confidence >= 0.9)
-      `),
-    confidence: z.number().min(0).max(1).describe(`
-         Stage-specific confidence thresholds:
-         Analysis: < 0.4 insufficient, > 0.6 ready for hypothesis
-         Hypothesis: < 0.6 weak, > 0.7 ready for verification
-         Verification: < 0.8 inconclusive, > 0.9 validated
-         Solution: >= 0.9 required for completion
-      `),
-    metadata: z.record(z.unknown()).describe("Stage-specific tracking data").optional()
-  }).describe("Sequential thinking stage categorization").optional(),
-  confidence: z.number().min(0).max(1).describe("Overall confidence level for current thought").optional(),
-  context: contextSchema.describe("Additional context for sequential processing").optional(),
+    type: z.enum(['analysis', 'hypothesis', 'verification', 'revision', 'solution']).describe(`(Required) The type classification of this thought. Must be one of: 'analysis', 'hypothesis', 'verification', 'revision', 'solution'. See TOOL_DESCRIPTION for details on each stage and its requirements (e.g., 'revision' requires isRevision=true).`),
+    confidence: z.number().min(0).max(1).describe(`(Required) Confidence score (0-1) reflecting the certainty/quality of this thought based on its type. See TOOL_DESCRIPTION for score interpretation guidelines.`),
+    metadata: z.record(z.unknown()).describe("Optional object for additional stage-specific metadata (e.g., test parameters, evidence, focus areas).").optional()
+  }).describe("(Required) Categorization for the current sequential thinking stage."),
+  // Note: Top-level 'confidence' parameter removed as it was unused/confusing. Confidence is handled within the 'category' object.
+  context: contextSchema.describe("Additional context (problem scope, assumptions, constraints) relevant to this thinking step or branch.").optional(),
   metrics: z.object({
-    processingTime: z.number().min(0).describe("Processing time in milliseconds"),
-    resourceUsage: z.number().min(0).describe("Resource usage in bytes"),
-    dependencyChain: z.array(z.string()).describe("Chain of thought dependencies").optional(),
+    processingTime: z.number().min(0).describe("(Required) Processing time for the *previous* step in milliseconds."),
+    resourceUsage: z.number().min(0).describe("(Required) Resource usage (e.g., memory in bytes) for the *previous* step."),
+    dependencyChain: z.array(z.string()).describe("Tracks dependencies (e.g., 'Revises thought 2', 'Branch from thought 4').").optional(),
     dynamicAdaptation: z.object({
-      confidenceThreshold: z.number().min(0).max(1).describe("Adaptive confidence threshold"),
-      parallelProcessing: z.boolean().describe("Parallel processing enabled"),
-      resourceOptimization: z.array(z.string()).describe("Applied optimizations").optional()
-    }).describe("Dynamic processing adaptations").optional(),
+      confidenceThreshold: z.number().min(0).max(1).describe("Current adaptive confidence threshold being used by the service."),
+      parallelProcessing: z.boolean().describe("Indicates if parallel processing is currently enabled by the service."),
+      resourceOptimization: z.array(z.string()).describe("List of resource optimizations applied by the service in the previous step.").optional()
+    }).describe("Information about dynamic adaptations made by the service in the previous step.").optional(),
     performanceMetrics: z.object({
-      averageProcessingTime: z.number().min(0).describe("Average processing time in milliseconds"),
-      successRate: z.number().min(0).max(1).describe("Successful thought rate"),
-      branchingEfficiency: z.number().min(0).max(1).describe("Branching effectiveness")
-    }).describe("Performance tracking metrics").optional()
-  }).describe("Thought processing metrics").optional()
+      averageProcessingTime: z.number().min(0).describe("Average processing time across recent thoughts."),
+      successRate: z.number().min(0).max(1).describe("Rate of recent thoughts meeting confidence thresholds."),
+      branchingEfficiency: z.number().min(0).max(1).describe("Efficiency metric related to branching success.")
+    }).describe("Overall performance metrics tracked by the service.").optional()
+  }).describe("Metrics related to the processing of the *previous* thought; used by the service for adaptation. Provide if available from previous step's output.").optional()
 };
 
+// Tool description providing comprehensive usage guidance for LLMs.
+export const TOOL_DESCRIPTION = `A powerful tool for dynamic and reflective problem-solving through structured, sequential thinking. Enables analysis, hypothesis generation, verification, revision, and branching.
 
-/**
- * Tool description and capabilities
- */
-export const TOOL_DESCRIPTION = `A powerful tool for dynamic and reflective problem-solving through structured thinking.
-This tool implements an advanced sequential thinking process with confidence-based validation and adaptive processing.
+**Core Functionality:**
+Guides an iterative thinking process step-by-step. Each call represents one 'thought'. Manages state including thought numbers, branches, categories, and confidence. Supports dynamic adaptation based on progress and metrics.
 
-Core Features:
-- Maximum depth of 12 sequential thoughts
-- Parallel processing of compatible thoughts
-- Advanced branching capabilities
-- Revision system with confidence thresholds
-- Dynamic adaptation based on context
-- Resource-aware processing
-- Error recovery mechanisms
+**REQUIRED Parameters (MUST be provided in EVERY call):**
+*   \`thought\`: (string) The content of the current thinking step.
+*   \`nextThoughtNeeded\`: (boolean) Are more thinking steps required after this one?
+*   \`thoughtNumber\`: (number) The sequential number of this thought within its branch (starts at 1).
+*   \`totalThoughts\`: (number) The current estimated total thoughts needed for this sequence/branch.
+*   \`category\`: (object) Categorization for the current stage (see details below).
 
-Processing Capabilities:
-1. Thought Initialization
-   - Problem scope analysis
-   - Required thoughts estimation
-   - Parameter optimization
-   - Resource allocation
-   - Confidence baseline
+**Key Parameter Rules & Relationships:**
+*   **Category Object (Required):** This object MUST be provided.
+    *   \`type\`: (enum) REQUIRED. Must be one of: 'analysis', 'hypothesis', 'verification', 'revision', 'solution'.
+    *   \`confidence\`: (number 0-1) REQUIRED. Reflects certainty/quality. See interpretation below.
+    *   \`metadata\`: (object) Optional. Additional stage-specific info.
+*   **Conditional Requirements (CRITICAL):**
+    *   If \`isRevision\` flag is set to \`true\`, then \`revisesThought\` (number) **MUST** also be provided and reference a thought number less than the current \`thoughtNumber\` within the same branch.
+    *   If \`category.type\` is set to 'revision', then the \`isRevision\` flag (boolean) **MUST** be set to \`true\`.
+    *   If starting a new branch (\`branchFromThought\` is provided), then \`branchId\` (string) **MUST** also be provided and be unique for the new branch. The first thought in a new branch should have \`thoughtNumber=1\`.
+*   **Confidence Interpretation (\`category.confidence\`):**
+    *   'analysis': Typically 0.5-0.7. < 0.4 insufficient, > 0.6 suggests readiness for 'hypothesis'.
+    *   'hypothesis': Typically 0.3-0.8. < 0.6 weak, > 0.7 suggests readiness for 'verification'.
+    *   'verification': Typically 0.6-0.9. < 0.8 inconclusive, > 0.9 suggests validation.
+    *   'revision': Should generally be higher than the thought being revised.
+    *   'solution': Requires >= 0.9.
+*   **Deprecated Parameter:** The top-level optional \`confidence\` parameter is unused and **SHOULD NOT** be provided. Use \`category.confidence\` instead.
+*   **Metrics Parameter:** The optional \`metrics\` object contains data *from the previous step's output*. Providing it helps the service perform dynamic adaptation.
 
-2. Advanced Processing
-   - Parallel thought execution
-   - Branch management
-   - Dynamic adaptation
-   - Context preservation
-   - Resource optimization
-   - Error handling
+**Suggested Workflow & Examples:**
+1.  **Analysis:** Start with \`category.type='analysis'\`, \`thoughtNumber=1\`. Define the problem.
+    \`\`\`json
+    {
+      "thought": "Analyzing system performance bottlenecks. Initial focus on database query times.",
+      "nextThoughtNeeded": true,
+      "thoughtNumber": 1, // Start at 1
+      "totalThoughts": 5,
+      "category": { "type": "analysis", "confidence": 0.6 } // Category REQUIRED
+    }
+    \`\`\`
+2.  **Hypothesis:** Set \`category.type='hypothesis'\`. Propose a testable solution. Increment \`thoughtNumber\`.
+    \`\`\`json
+    {
+      "thought": "Hypothesis: The main bottleneck is likely due to missing indexes on the 'orders' table.",
+      "nextThoughtNeeded": true,
+      "thoughtNumber": 2, // Increment
+      "totalThoughts": 5,
+      "category": { "type": "hypothesis", "confidence": 0.75 } // Category REQUIRED
+    }
+    \`\`\`
+3.  **Verification:** Set \`category.type='verification'\`. Describe testing method. Increment \`thoughtNumber\`.
+    \`\`\`json
+    {
+      "thought": "Verification plan: Use EXPLAIN ANALYZE on typical queries against 'orders' table. Check for full table scans.",
+      "nextThoughtNeeded": true,
+      "thoughtNumber": 3, // Increment
+      "totalThoughts": 5,
+      "category": { "type": "verification", "confidence": 0.8 } // Category REQUIRED
+    }
+    \`\`\`
+4.  **Revision (if verification fails/inconclusive):** Set \`category.type='revision'\`, \`isRevision: true\`, provide \`revisesThought\`. Modify previous thought. Increment \`thoughtNumber\`.
+    \`\`\`json
+    {
+      "thought": "Revision: Initial verification showed some slow queries, but not consistently table scans. Revising hypothesis to include potential locking issues.",
+      "nextThoughtNeeded": true,
+      "thoughtNumber": 4, // Increment
+      "totalThoughts": 5, // May need to increase totalThoughts later
+      "isRevision": true, // MUST be true for 'revision' category
+      "revisesThought": 2, // MUST provide thought being revised
+      "category": { "type": "revision", "confidence": 0.7 } // Category REQUIRED
+    }
+    \`\`\`
+5.  **Solution (if verification succeeds):** Set \`category.type='solution'\`. State the validated solution. Increment \`thoughtNumber\`. Set \`nextThoughtNeeded=false\` if complete.
+    \`\`\`json
+    {
+      "thought": "Solution: Adding indexes (index_orders_on_customer_id, index_orders_on_created_at) resolved the query performance bottleneck.",
+      "nextThoughtNeeded": false, // Sequence complete
+      "thoughtNumber": 4, // Increment
+      "totalThoughts": 4, // Adjusted total
+      "category": { "type": "solution", "confidence": 0.95 } // Category REQUIRED, high confidence
+    }
+    \`\`\`
+6.  **Branching:** To explore an alternative, use \`branchFromThought\` and \`branchId\`. Start the new branch with \`thoughtNumber=1\`.
+    \`\`\`json
+    {
+      "thought": "Alternative hypothesis: Could the bottleneck be network latency between app and DB?",
+      "nextThoughtNeeded": true,
+      "thoughtNumber": 1, // Start at 1 for the new branch
+      "totalThoughts": 3, // Estimate for this branch
+      "branchFromThought": 1, // Branching from the initial analysis
+      "branchId": "network-latency-check", // MUST provide unique branch ID
+      "category": { "type": "hypothesis", "confidence": 0.6 } // Category REQUIRED
+    }
+    \`\`\`
 
-3. Quality Assurance
-   - Confidence thresholds
-   - Revision tracking
-   - Error detection
-   - Resource validation
-   - Context verification
-   - Result validation
+**Best Practices:**
+*   Strictly adhere to the **REQUIRED Parameters** and **Conditional Requirements**.
+*   Maintain accurate \`thoughtNumber\` sequence within each branch.
+*   Ensure \`category.type\` matches the thinking stage and required flags (\`isRevision\`).
+*   Use \`context\` to maintain focus, especially within branches.
+*   Use \`branchFromThought\` and \`branchId\` correctly for parallel exploration.
 
-Usage Guidelines:
-1. Start with clear problem definition
-2. Utilize branching for complex scenarios
-3. Monitor confidence levels
-4. Track progress and metrics
-5. Leverage parallel processing
-6. Use revision system for refinement
-7. Handle errors appropriately
-8. Optimize resource usage
-9. Monitor performance
-10. Validate results`;
+**Error Handling:**
+*   Invalid parameter combinations (e.g., \`isRevision=true\` without \`revisesThought\`) will cause errors.
+*   Thoughts exceeding \`maxDepth\` (default 12) might be rejected.
+*   Ensure \`category.confidence\` meets the guidelines for the stage.
 
-/**
- * Parameter Relationships:
- * ---------------------
- * 1. Revision Chain:
- *    - isRevision requires revisesThought
- *    - revisesThought must be < current thoughtNumber
- *    - Can't revise a thought from a different branch
- *    - Affects confidence inheritance
- *    - May trigger threshold adjustments
- * 
- * 2. Branching Logic:
- *    - branchFromThought requires branchId
- *    - New branch inherits context from parent
- *    - Multiple branches can start from same thought
- *    - Parallel processing considerations:
- *      * Resource limits
- *      * Confidence thresholds
- *      * Context preservation
- *      * Error handling
- * 
- * 3. Confidence Flow:
- *    - Lower confidence may trigger automatic revision
- *    - Higher confidence enables faster progression
- *    - Category confidence affects overall thought confidence
- *    - Confidence calculation components:
- *      * Content quality (40% weight)
- *        - Text structure analysis
- *        - Coherence scoring
- *        - Relevance matching
- *      * Revision impact (25% weight)
- *        - Content similarity
- *        - Length comparison
- *        - Improvement metrics
- *      * Historical performance (20% weight)
- *        - Success rate
- *        - Performance trend
- *        - Adaptation history
- *      * Resource efficiency (15% weight)
- *        - Memory utilization
- *        - Processing time
- *        - Resource optimization
- *    - Adaptive thresholds:
- *      * Base threshold adjusts based on chain progress
- *      * Minimum threshold enforced (0.4)
- *      * Maximum threshold capped (0.95)
- *      * Dynamic adjustment based on:
- *        - Success rate
- *        - Error patterns
- *        - Resource usage
- *        - Processing metrics
- * 
- * 4. Context Inheritance:
- *    - Branches inherit parent context
- *    - Revisions inherit original thought's context
- *    - Context can be updated within branch
- *    - Affects confidence calculations
- *    - Influences processing decisions
- */
+This tool facilitates rigorous, step-by-step problem-solving and exploration of complex ideas.`;
 
-/**
- * Error Handling:
- * -------------
- * 1. Validation Errors:
- *    - Invalid parameter combinations
- *    - Out-of-range values
- *    - Missing required dependencies
- *    - Resolution: Automatic correction or error response
- * 
- * 2. Processing Errors:
- *    - Resource exhaustion
- *    - Timeout conditions
- *    - Integration failures
- *    - Resolution: Retry with adjusted parameters
- * 
- * 3. Confidence Failures:
- *    - Below threshold results
- *    - Context mismatches
- *    - Resolution: 
- *      * Automatic revision
- *      * Critical override
- *      * Parameter adjustment
- */
-
-/**
- * Performance Considerations:
- * ------------------------
- * 1. Resource Usage:
- *    - Memory management
- *    - Processing time limits
- *    - Parallel execution bounds
- *    - Adaptive resource allocation
- * 
- * 2. Optimization:
- *    - Caching strategies
- *    - Context reuse
- *    - Confidence threshold adaptation
- *    - Branch pruning
- */
-
-/**
- * Usage Examples:
- * -------------
- * 1. Regular Thought:
- *    {
- *      thought: "Analyzing performance bottlenecks",
- *      thoughtNumber: 1,
- *      totalThoughts: 5,
- *      nextThoughtNeeded: true,
- *      category: { type: 'analysis', confidence: 0.6 },
- *      metrics: {
- *        processingTime: 150,
- *        resourceUsage: 52428800,  // 50MB
- *        dependencyChain: []
- *      }
- *    }
- * 
- * 2. Revision with Critical Override:
- *    {
- *      thought: "Database indexing would be more effective than caching",
- *      thoughtNumber: 3,
- *      totalThoughts: 5,
- *      nextThoughtNeeded: true,
- *      isRevision: true,
- *      revisesThought: 2,
- *      category: { type: 'revision', confidence: 0.9 },
- *      confidence: 0.4,  // Using critical override
- *      context: {
- *        problemScope: "Performance Optimization",
- *        assumptions: ["High read load", "Limited memory"]
- *      },
- *      metrics: {
- *        processingTime: 200,
- *        resourceUsage: 78643200,  // 75MB
- *        dependencyChain: ["Revises thought 2"],
- *        dynamicAdaptation: {
- *          confidenceThreshold: 0.4,
- *          parallelProcessing: false,
- *          resourceOptimization: ["Reduced context window"]
- *        }
- *      }
- *    }
- * 
- * 3. Parallel Branch with Resource Constraints:
- *    {
- *      thought: "Exploring alternative security measures",
- *      thoughtNumber: 1,
- *      totalThoughts: 3,
- *      nextThoughtNeeded: true,
- *      branchFromThought: 4,
- *      branchId: "security-analysis",
- *      category: { type: 'hypothesis', confidence: 0.7 },
- *      context: {
- *        constraints: ["Max memory: 1GB", "Response time < 100ms"]
- *      },
- *      metrics: {
- *        processingTime: 180,
- *        resourceUsage: 104857600,  // 100MB
- *        dependencyChain: ["Branch from thought 4"],
- *        performanceMetrics: {
- *          averageProcessingTime: 175,
- *          successRate: 0.85,
- *          branchingEfficiency: 0.9
- *        }
- *      }
- *    }
- */
+// Note: Removed large comment blocks with parameter relationships, examples, etc.
+// This information has been integrated into the TOOL_DESCRIPTION and Zod parameter descriptions above for better LLM accessibility.

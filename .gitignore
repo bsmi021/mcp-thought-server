@@ -302,3 +302,4 @@ cython_debug/
 .cursor/
 ui-design-plan.md
 
+memory-bank/

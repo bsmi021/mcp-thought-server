@@ -213,8 +213,16 @@ export class ConfigurationManager {
                  * Default: 0.65 - Higher than previous 0.65 to ensure valuable corrections
                  * Note: Revisions to logical chains must be extremely confident
                  */
-                minRevisionConfidence: 0.65
-            },
+                minRevisionConfidence: 0.65,
+                /**
+                 * Default sentence transformer model for semantic relevance checks.
+                 */
+                embeddingModel: 'Xenova/all-MiniLM-L6-v2',
+                /**
+                 * Whether to include previous step's text in context relevance calculation.
+                 */
+                includePreviousStepTextInContext: false
+            } as Partial<CoreConfig>, // Explicit Cast Added
             enhancementConfig: {
                 enableCrossServiceOptimization: true,
                 enableAdaptiveProcessing: true,
@@ -296,4 +304,4 @@ export class ConfigurationManager {
         if (value === undefined) return defaultValue;
         return value.toLowerCase() === 'true';
     }
-} 
+}

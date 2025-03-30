@@ -190,7 +190,10 @@ export const integratedConfigSchema = z.object({
         contextWindow: z.number().min(1).optional(),
         branchingEnabled: z.boolean().optional(),
         revisionEnabled: z.boolean().optional(),
-        confidenceThreshold: z.number().min(0).max(1).optional()
+        confidenceThreshold: z.number().min(0).max(1).optional(),
+        // Added new optional fields to match CoreConfig
+        embeddingModel: z.string().optional(),
+        includePreviousStepTextInContext: z.boolean().optional()
     }),
     enhancementConfig: z.object({
         enableCrossServiceOptimization: z.boolean().optional(),
@@ -267,4 +270,4 @@ export const integratedResultSchema = z.object({
             })
         })
     })
-}); 
+});

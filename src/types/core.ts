@@ -7,6 +7,8 @@ export interface CoreConfig {
     confidenceThreshold: number;
     minConfidenceGrowth: number;  // Minimum confidence increase between thoughts
     minRevisionConfidence: number;  // Minimum confidence for revisions
+    embeddingModel?: string; // Optional: Name of the sentence transformer model for embeddings
+    includePreviousStepTextInContext?: boolean; // Optional: Flag to include prior step text in relevance context
 }
 
 export interface ThoughtMetrics {
@@ -19,4 +21,4 @@ export interface ThoughtMetrics {
         memory: number;
         cpu: number;
     };
-} 
+}

@@ -5,13 +5,13 @@ export const TOOL_NAME = "integratedThinking";
 
 // Enhanced tool parameters schema with integrated category documentation
 export const TOOL_PARAMS = {
-  content: z.string().describe("The main content to be processed"),
-  thoughtNumber: z.number().min(1).describe("Current thought number in sequence"),
-  totalThoughts: z.number().min(1).describe("Estimated total thoughts needed"),
-  draftNumber: z.number().min(1).describe("Current draft number"),
-  totalDrafts: z.number().min(1).describe("Estimated total drafts needed"),
-  needsRevision: z.boolean().describe("True if current content needs revision"),
-  nextStepNeeded: z.boolean().describe("True if more steps are needed in the process"),
+  content: z.string().describe("REQUIRED: The main content to be processed"),
+  thoughtNumber: z.number().min(1).describe("REQUIRED: Current thought number in sequence"),
+  totalThoughts: z.number().min(1).describe("REQUIRED: Estimated total thoughts needed"),
+  draftNumber: z.number().min(1).describe("REQUIRED: Current draft number"),
+  totalDrafts: z.number().min(1).describe("REQUIRED: Estimated total drafts needed"),
+  needsRevision: z.boolean().describe("REQUIRED: True if current content needs revision"),
+  nextStepNeeded: z.boolean().describe("REQUIRED:True if more steps are needed in the process"),
   isRevision: z.boolean().describe("Set to true if this step represents a revised version of a previous draft. *(If true, 'revisesDraft' MUST be provided)*.").optional(),
   revisesDraft: z.number().min(1).describe("*(Required if isRevision is true)*. Specifies the draftNumber being revised. Must be less than the current draftNumber.").optional(),
   isCritique: z.boolean().describe("Set to true if this step involves providing a critique of a draft (content should be the critique text). *(If true, 'critiqueFocus' is strongly recommended)*.").optional(),
@@ -26,8 +26,8 @@ export const TOOL_PARAMS = {
             - 'revision': Iterative improvement (requires isRevision)
             - 'final': Complete solution (confidence >= 0.9)
 
-             NOTE: Terms like 'analysis', 'review', etc. are descriptions of what happens in these stages,
-            but are NOT valid stage names themselves. You MUST use one of the 4 stages listed above.
+            **NOTE: Terms like 'analysis', 'justification', 'hypothesis', 'verification', 'review', etc. are descriptions of what happens in these stages,
+            but are NOT valid stage names themselves. You MUST use one of the 4 stages listed above.**
         `),
     confidence: z.number().min(0).max(1).describe(`
             ** Note the confidence score is a combined score of the thinking and drafting processes.
@@ -64,7 +64,7 @@ Processes content through iterative cycles of thinking (analysis, hypothesis, ve
 *   \`totalDrafts\`: (number) Estimated total draft iterations needed (can be adjusted).
 *   \`needsRevision\`: (boolean) Flag indicating if the current content requires revision?
 *   \`nextStepNeeded\`: (boolean) Are more processing steps required after this one?
-*   \`category\`: (object) Categorization for the current stage (see details below). **This object is REQUIRED.**
+*   \`category\`: (object) Categorization for the current stage (see details below). **This object is REQUIRED.** Valid types are: 'initial', 'critique', 'revision', 'final'. No other types are allowed.
 
 **Key Parameter Rules & Relationships:**
 *   **Category Object (Required):** This object MUST be provided.

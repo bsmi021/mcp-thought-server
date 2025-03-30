@@ -13,8 +13,9 @@ import { EnhancementConfig as DraftEnhancementConfig, DraftData } from '../types
 import { EnhancementConfig as SequentialEnhancementConfig, SequentialThoughtData } from '../types/index.js';
 import { ConfigurationManager } from '../config/ConfigurationManager.js';
 import { sanitizeContext, getContextConfidence, hasContextContent, mergeContexts, logger } from '../utils/index.js';
-import { EmbeddingUtil } from '../utils/EmbeddingUtil.js'; // Added Import
-import { calculateRelevanceScore } from '../utils/SimilarityUtil.js'; // Added Import
+import { EmbeddingUtil } from '../utils/EmbeddingUtil.js';
+import { calculateRelevanceScore } from '../utils/SimilarityUtil.js';
+import { CoherenceCheckerUtil } from '../utils/CoherenceCheckerUtil.js'; // Added Import
 
 
 /**
@@ -519,7 +520,7 @@ export class IntegratedThinkingService {
     /**
      * Calculate integrated confidence score
      */
-    // Made async because it calls async calculateContextRelevance
+    // Made async because it calls async calculateContextRelevance and calculateContentQuality
     private async calculateIntegratedConfidence(
         sequentialResult: SequentialThoughtData,
         draftResult: DraftData
@@ -528,8 +529,8 @@ export class IntegratedThinkingService {
         const sequentialConfidence = Math.min(0.95, sequentialResult.confidence || 0.5);
         const draftConfidence = Math.min(0.95, draftResult.confidence || 0.5);
 
-        // Calculate content quality score (sync)
-        const contentQuality = this.calculateContentQuality(sequentialResult, draftResult);
+        // Calculate content quality score (now async)
+        const contentQuality = await this.calculateContentQuality(sequentialResult, draftResult); // Added await
 
         // Calculate processing success score (sync)
         const processingSuccess = Math.min(0.95, 1 - (1 - this.calculateSuccessRate()));
@@ -586,28 +587,34 @@ export class IntegratedThinkingService {
     }
 
     /**
-     * Calculate content quality score
+     * Calculate content quality score, now incorporating LLM coherence check.
      */
-    private calculateContentQuality(
+    // Made async
+    private async calculateContentQuality(
         sequentialResult: SequentialThoughtData,
         draftResult: DraftData
-    ): number {
-        // No changes needed here, relies on sync confidence values from results
-        const baseConfidence = (
-            (sequentialResult.confidence || 0.5) * 0.6 +
-            (draftResult.confidence || 0.5) * 0.4
-        );
+    ): Promise<number> { // Made async
+
+        // Combine text for coherence check
+        const combinedText = [sequentialResult.thought, draftResult.content].filter(Boolean).join('\n');
+
+        // Get LLM coherence score (async)
+        const coherenceScore = await CoherenceCheckerUtil.getInstance().checkCoherence(combinedText);
+
+        // Calculate structure/length score (sync)
         const sequentialContent = sequentialResult.thought || '';
         const draftContent = draftResult.content || '';
         const hasStructure = sequentialContent.includes('\n') || draftContent.includes('\n');
-        const appropriateLength = (
+        const appropriateLength = ( // Check combined length? Or individual? Let's stick to individual for now.
             sequentialContent.length > 50 && sequentialContent.length < 20000 &&
             (!draftContent || (draftContent.length > 50 && draftContent.length < 20000))
         );
-        let score = baseConfidence;
-        if (hasStructure) score += 0.1;
-        if (appropriateLength) score += 0.1;
-        return Math.min(1, score);
+        const structureScore = (hasStructure ? 0.5 : 0) + (appropriateLength ? 0.5 : 0);
+
+        // Combine scores: e.g., 50% structure/length, 50% LLM coherence
+        const finalScore = (structureScore * 0.5) + (coherenceScore * 0.5);
+
+        return Math.min(1, finalScore); // Ensure score is capped at 1
     }
 
     /**

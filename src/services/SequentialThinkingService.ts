@@ -2,8 +2,9 @@ import { SequentialThoughtData, ThoughtCategory, CoreConfig, EnhancementConfig, 
 import { ConfigurationManager } from '../config/ConfigurationManager.js';
 import chalk from "chalk";
 import { sanitizeContext, getContextConfidence, hasContextContent, logger } from '../utils/index.js';
-import { EmbeddingUtil } from '../utils/EmbeddingUtil.js'; // Added Import
-import { calculateRelevanceScore } from '../utils/SimilarityUtil.js'; // Added Import
+import { EmbeddingUtil } from '../utils/EmbeddingUtil.js';
+import { calculateRelevanceScore } from '../utils/SimilarityUtil.js';
+import { CoherenceCheckerUtil } from '../utils/CoherenceCheckerUtil.js'; // Added Import
 
 export class SequentialThinkingService {
     private thoughtHistory: SequentialThoughtData[] = [];
@@ -144,8 +145,8 @@ export class SequentialThinkingService {
             return 0.4; // Default confidence for invalid thoughts
         }
 
-        // Base confidence from content quality
-        const contentQuality = this.calculateContentQuality(thought);
+        // Base confidence from content quality (now async)
+        const contentQuality = await this.calculateContentQuality(thought); // Added await
 
         // Calculate processing success score
         const processingSuccess = 1 - (1 - this.calculateSuccessRate());
@@ -231,16 +232,17 @@ export class SequentialThinkingService {
         return lastThought?.confidence;
     }
 
-    private calculateContentQuality(thought: Partial<SequentialThoughtData>): number {
+    // Made async because it calls async checkCoherence
+    private async calculateContentQuality(thought: Partial<SequentialThoughtData>): Promise<number> { // Made async
         if (!thought.thought) return 0.4;
 
-        // Content structure metrics (30%)
+        // Content structure metrics (50%)
         const hasStructure = thought.thought.includes('\n') || thought.thought.includes('.');
         const appropriateLength = thought.thought.length > 50 && thought.thought.length < 20000;
         const structureScore = (hasStructure ? 0.5 : 0) + (appropriateLength ? 0.5 : 0);
 
-        // Content analysis metrics (40%)
-        const coherenceScore = this.calculateCoherence(thought.thought);
+        // Content analysis metrics (50%) - Use LLM checker now
+        // const coherenceScore = this.calculateCoherence(thought.thought); // <<< REMOVE THIS LINE
         // calculateRelevance is removed/replaced by calculateContextRelevance
         // Need to decide how to factor this into quality score now
         // Option 1: Remove relevanceScore from here, let calculateThoughtConfidence handle it directly
@@ -248,10 +250,11 @@ export class SequentialThinkingService {
         // Let's go with Option 1 for now, simplifying quality score.
         // const relevanceScore = this.calculateRelevance(thought); // Removed
         // const analysisScore = (coherenceScore + relevanceScore) / 2; // Adjusted
-        const analysisScore = coherenceScore; // Simplified
+        // Content analysis metrics (50%) - Use LLM checker now
+        const coherenceScore = await CoherenceCheckerUtil.getInstance().checkCoherence(thought.thought || ''); // Use new util
+        const analysisScore = coherenceScore; // analysisScore is now LLM coherence score
 
-        // Context alignment (30%) - This also seems redundant with the new calculateContextRelevance
-        // Let's remove this too and adjust weights.
+        // Context alignment - REMOVED
         // const contextScore = this.calculateContextAlignment(thought); // Removed
 
         // Recalculate weights: Structure (50%), Analysis/Coherence (50%)
@@ -262,14 +265,8 @@ export class SequentialThinkingService {
         );
     }
 
-    private calculateCoherence(content: string): number {
-        // No changes needed here
-        const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
-        const avgLength = sentences.reduce((sum, s) => sum + s.length, 0) / sentences.length;
-        const lengthScore = Math.min(1, Math.max(0, 1 - Math.abs(100 - avgLength) / 100));
-        const countScore = Math.min(1, sentences.length / 10);
-        return (lengthScore + countScore) / 2;
-    }
+    // REMOVED - Replaced by CoherenceCheckerUtil
+    // private calculateCoherence(content: string): number { ... } // Ensure this method definition is fully deleted if present
 
     // REMOVED - Replaced by calculateContextRelevance using embeddings
     // private calculateRelevance(thought: Partial<SequentialThoughtData>): number { ... }
@@ -293,9 +290,19 @@ export class SequentialThinkingService {
         ].filter((s): s is string => typeof s === 'string' && s.trim() !== '');
 
         if (!outputText || contextStrings.length === 0) {
-            logger.warn('No output text or context strings for relevance calculation.');
+            // +++ LOGGING (Corrected Format)
+            logger.warn('SequentialService: No output text or context strings for relevance calculation.', {
+                outputTextProvided: !!outputText,
+                contextStringsCount: contextStrings.length,
+                contextInput: context // Log the input context object
+            });
             return 0.4; // Default low score if no text or context
         }
+        // +++ LOGGING (Corrected Format)
+        logger.debug('SequentialService: Performing relevance calculation.', {
+            outputTextChars: outputText.length,
+            contextStringsCount: contextStrings.length
+        });
 
         try {
             const embeddingUtil = EmbeddingUtil.getInstance(); // Get singleton

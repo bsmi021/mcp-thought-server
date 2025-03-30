@@ -221,7 +221,12 @@ export class ConfigurationManager {
                 /**
                  * Whether to include previous step's text in context relevance calculation.
                  */
-                includePreviousStepTextInContext: false
+                includePreviousStepTextInContext: false,
+                /**
+                 * Whether the optional LLM coherence check is enabled (determined by env vars).
+                 * Default is false. Will be overridden in loadConfiguration if env vars are set.
+                 */
+                enableLLMCoherenceCheck: false
             } as Partial<CoreConfig>, // Explicit Cast Added
             enhancementConfig: {
                 enableCrossServiceOptimization: true,
@@ -290,10 +295,22 @@ export class ConfigurationManager {
             showFullResponse: this.getBooleanEnv('MCP_SHOW_FULL_RESPONSE', defaultConfig.verboseConfig.showFullResponse)
         };
 
-        return {
+        // Determine if LLM coherence check should be enabled based on env vars
+        const coherenceApiKey = process.env['COHERENCE_API_KEY'];
+        const coherenceModel = process.env['COHERENCE_CHECK_MODEL'];
+        const enableLLMCoherenceCheck = !!(coherenceApiKey && coherenceModel); // Enable only if both key and model are set
+
+        // Create the final config, overriding the default flag if needed
+        const finalConfig = {
             ...defaultConfig,
+            sequentialConfig: {
+                ...defaultConfig.sequentialConfig,
+                enableLLMCoherenceCheck: enableLLMCoherenceCheck
+            },
             verboseConfig
         };
+
+        return finalConfig;
     }
 
     /**

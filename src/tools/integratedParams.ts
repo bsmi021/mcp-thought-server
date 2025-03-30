@@ -41,7 +41,7 @@ export const TOOL_PARAMS = {
     metadata: z.record(z.unknown()).describe("Additional stage-specific information for both thought and draft aspects").optional()
   }).describe("Integrated categorization for both thinking and drafting processes"), // Removed .optional()
   // Deprecated top-level confidence removed. Use category.confidence.
-  context: contextSchema.describe("Additional context for integrated processing").optional(),
+  context: contextSchema.describe("REQUIRED: Additional context (problem scope, assumptions, constraints) relevant to the integrated process. Crucial for relevance scoring."), // Made required and improved description
   mcpFeatures: z.object({
     sequentialThinking: z.boolean().optional(),
     draftProcessing: z.boolean().optional(),

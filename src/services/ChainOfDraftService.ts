@@ -1,8 +1,9 @@
 import { DraftConfig, EnhancementConfig, DebugConfig, DraftData, DraftMetrics, ProcessingState, DraftContext, DraftCategory, draftDataSchema } from "../types/chainOfDraft.js";
 import { ConfigurationManager } from '../config/ConfigurationManager.js';
 import { sanitizeContext, getContextConfidence, hasContextContent, mergeContexts, logger } from '../utils/index.js';
-import { EmbeddingUtil } from '../utils/EmbeddingUtil.js'; // Added Import
-import { calculateRelevanceScore } from '../utils/SimilarityUtil.js'; // Added Import
+import { EmbeddingUtil } from '../utils/EmbeddingUtil.js';
+import { calculateRelevanceScore } from '../utils/SimilarityUtil.js';
+import { CoherenceCheckerUtil } from '../utils/CoherenceCheckerUtil.js'; // Added Import
 
 /**
  * Service for managing Chain of Draft (CoD) operations.
@@ -223,7 +224,7 @@ export class ChainOfDraftService {
     /**
      * Calculate confidence score for a draft
      */
-    // Made async because it calls async calculateContextRelevance
+    // Made async because it calls async calculateContextRelevance and calculateDraftQuality
     private async calculateDraftConfidence(draft: DraftData): Promise<number> {
         if (!draft.content) {
             return 0.4; // Lower default confidence for empty content
@@ -232,8 +233,17 @@ export class ChainOfDraftService {
         // Determine content type
         const contentType = this.determineContentType(draft);
 
-        // Calculate base quality score (structure, coherence, basic relevance)
-        const qualityScore = this.calculateDraftQuality(draft); // Stays sync
+        // Calculate base quality score (structure, coherence) (now async)
+        const qualityScore = await this.calculateDraftQuality(draft); // Added await
+
+        // +++ LOGGING: Inspect draft object before relevance check +++
+        logger.debug('CoD calculateDraftConfidence - Draft object before relevance check:', {
+            draftNumber: draft.draftNumber,
+            hasContent: !!draft.content,
+            contextExists: !!draft.context,
+            contextKeys: draft.context ? Object.keys(draft.context) : null
+        });
+        // +++ END LOGGING +++
 
         // Calculate semantic context relevance (NEW, async)
         const contextRelevanceScore = await this.calculateContextRelevance(draft); // Added await
@@ -339,22 +349,21 @@ export class ChainOfDraftService {
     // REMOVED - Logic moved/adjusted within calculateDraftConfidence
     // private calculateDynamicThreshold(...) { ... }
 
-    // Modified: Removed context alignment calculation
-    private calculateDraftQuality(draft: DraftData): number {
+    // Modified: Removed context alignment calculation, Made async
+    private async calculateDraftQuality(draft: DraftData): Promise<number> { // Made async
         const content = draft.content || '';
 
-        // Content structure metrics (Was 30%)
+        // Content structure metrics (50%)
         const hasStructure = content.includes('\n') || content.includes('.');
         const appropriateLength = content.length > 50 && content.length < 20000;
         const structureScore = (hasStructure ? 0.5 : 0) + (appropriateLength ? 0.5 : 0);
 
-        // Content analysis metrics (Was 40%)
-        const coherenceScore = this.analyzeDraftCoherence(content);
+        // Content analysis metrics (50%) - Use LLM checker now
+        const coherenceScore = await CoherenceCheckerUtil.getInstance().checkCoherence(content || ''); // Use new util
         // Relevance score based on critiqueFocus is removed as primary relevance is semantic now.
-        // const relevanceScore = this.analyzeDraftRelevance(draft); // Removed call
-        const analysisScore = coherenceScore; // analysisScore is now just coherenceScore
+        const analysisScore = coherenceScore; // analysisScore is now LLM coherence score
 
-        // Context alignment (Was 30%) - REMOVED, handled by calculateContextRelevance now
+        // Context alignment - REMOVED
         // const contextScore = this.calculateContextAlignment(draft);
 
         // Recalculate weights: Structure (50%), Analysis (Coherence only) (50%)
@@ -365,14 +374,8 @@ export class ChainOfDraftService {
         );
     }
 
-    private analyzeDraftCoherence(content: string): number {
-        // No changes needed
-        const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
-        const avgLength = sentences.reduce((sum, s) => sum + s.length, 0) / sentences.length;
-        const lengthScore = Math.min(1, Math.max(0, 1 - Math.abs(100 - avgLength) / 100));
-        const countScore = Math.min(1, sentences.length / 10);
-        return (lengthScore + countScore) / 2;
-    }
+    // REMOVED - Replaced by CoherenceCheckerUtil
+    // private analyzeDraftCoherence(content: string): number { ... }
 
     // REMOVED - This method relied on extractContextKeywords which is gone.
     // Its purpose is superseded by the main calculateContextRelevance.
@@ -650,6 +653,13 @@ export class ChainOfDraftService {
 
         // Add historical context? Maybe less relevant for CoD?
         // Let's stick to current context for now.
+
+        // +++ LOGGING: Inspect received context
+        logger.debug('CoD calculateContextRelevance received:', {
+            hasOutputText: !!outputText,
+            contextObject: context, // Log the whole context object received
+            contextStringsCalculated: contextStrings // Log the array after filtering
+        });
 
         if (!outputText || contextStrings.length === 0) {
             logger.warn('No output text or context strings for relevance calculation in CoD.');

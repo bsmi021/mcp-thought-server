@@ -9,6 +9,7 @@ export interface CoreConfig {
     minRevisionConfidence: number;  // Minimum confidence for revisions
     embeddingModel?: string; // Optional: Name of the sentence transformer model for embeddings
     includePreviousStepTextInContext?: boolean; // Optional: Flag to include prior step text in relevance context
+    enableLLMCoherenceCheck?: boolean; // Optional: Flag to enable LLM coherence check
 }
 
 export interface ThoughtMetrics {

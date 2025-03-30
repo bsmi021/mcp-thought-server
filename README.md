@@ -1,214 +1,236 @@
 # MCP Thought Server
 
-A powerful server for managing and processing thoughts, perspectives, and drafts.
+A powerful server providing advanced thinking tools via the Model Context Protocol (MCP) to enhance the reasoning, planning, and iterative refinement capabilities of AI agents like Cline.
 
-## Features
+## Core Purpose
 
-### 1. Perspective Analysis System (PAS)
+This server offers specialized MCP tools designed to guide AI agents through structured cognitive processes, enabling them to tackle complex tasks more effectively by simulating advanced reasoning, breaking down problems, generating and critiquing solutions, and tracking progress reliably.
 
-The Perspective Analysis System (PAS) is a powerful tool for analyzing, comparing, and synthesizing different perspectives in a system. It helps identify common ground, differences, and potential conflicts between various stakeholders' viewpoints.
+## Key Features / Available Tools
 
-Key features:
+The server provides the following tools for structured thinking via MCP:
 
-- Perspective analysis with configurable confidence thresholds
-- Multi-perspective comparison with similarity and conflict metrics
-- Perspective synthesis to find common ground and generate recommendations
-- Perspective optimization to reduce complexity and improve clarity
-- Conflict resolution with step-by-step guidance
-- Validation with configurable rules and relationship checks
+### Sequential Thinking (`sequentialThinking`)
 
-#### Usage Example
+* **Purpose:** Guides structured, step-by-step problem-solving through stages like analysis, hypothesis, verification, revision, and solution.
+* **Key Concepts:** Manages distinct thinking stages and state, including thought numbers and branching for exploring alternatives.
+* **Workflow Diagram:**
 
-```typescript
-import { perspectiveAnalysisApi } from './src/services/perspectiveAnalysisApi';
+    ```mermaid
+    graph TD
+        A[Analysis] --> H{Hypothesis};
+        H --> V{Verification};
+        V -- Success --> S[Solution];
+        V -- Failure/Inconclusive --> R{Revision};
+        R --> H;
+        H -- Alternative --> B[Branch: New Hypothesis];
+        B --> V;
+    ```
 
-// Analyze a perspective
-const analysisResult = await perspectiveAnalysisApi.analyzePerspective({
-    input: {
-        type: {
-            category: 'stakeholder',
-            subcategory: 'primary',
-            weight: 0.8
-        },
-        viewpoint: 'User Experience',
-        stakeholder: {
-            id: '123e4567-e89b-12d3-a456-426614174000',
-            role: 'End User',
-            influence: 0.9,
-            interests: ['Ease of use', 'Performance', 'Reliability']
-        },
-        requirements: [
-            {
-                description: 'Fast response time',
-                priority: 9,
-                rationale: 'Users expect instant feedback',
-                validation: {
-                    criteria: 'Response time < 200ms',
-                    method: 'Performance testing',
-                    status: 'pending'
-                }
-            }
-        ],
-        constraints: [
-            {
-                type: 'technical',
-                description: 'Must work on mobile devices',
-                impact: 0.8,
-                mitigation: 'Use responsive design'
-            }
-        ],
-        priorities: [
-            {
-                item: 'Mobile optimization',
-                level: 4,
-                justification: 'High mobile user base'
-            }
-        ]
+* **Parameter Reference:** *See `src/tools/sequentialThinkingParams.ts` for detailed parameters, descriptions, and usage examples.*
+
+### Chain of Draft (`chainOfDraft`)
+
+* **Purpose:** Facilitates iterative content generation and refinement through cycles of drafting, critiquing, and revising.
+* **Key Concepts:** Manages distinct drafting stages (initial, critique, revision, final) and state, including draft numbers.
+* **Workflow Diagram:**
+
+    ```mermaid
+    graph TD
+        I[Initial Draft] --> C{Critique};
+        C -- Revision Needed --> R[Revision];
+        R --> C;
+        C -- Good Enough --> F[Final Draft];
+    ```
+
+* **Parameter Reference:** *See `src/tools/chainOfDraftParams.ts` for detailed parameters, descriptions, and usage examples.*
+
+### Integrated Thinking (`integratedThinking`)
+
+* **Purpose:** Combines Sequential Thinking and Chain of Draft for complex tasks requiring both structured reasoning and iterative content refinement.
+* **Key Concepts:** Integrates both methodologies and manages combined state (thought and draft numbers).
+* **Workflow Diagram (Simplified):**
+
+    ```mermaid
+    graph TD
+        Start[Start: Initial Thought/Draft] --> Step1{Critique / Analysis};
+        Step1 -- Needs Improvement --> Step2[Revision / Hypothesis];
+        Step2 --> Step1;
+        Step1 -- Looks Good --> Step3{Verification / Final Review};
+        Step3 -- Pass --> Finish[Final Output];
+        Step3 -- Fail --> Step2;
+    ```
+
+    *(Note: This diagram simplifies the potentially complex interplay)*
+* **Parameter Reference:** *See `src/tools/integratedParams.ts` for detailed parameters, descriptions, and usage examples.*
+
+### Set Feature (`setFeature`)
+
+* **Purpose:** A debug tool for enabling or disabling specific internal server features during runtime, such as detailed logging or metric tracking.
+* **Key Concepts:** Intended for debugging and diagnostics.
+* **Parameter Reference:** *See `src/tools/setFeatureParams.ts` for detailed parameters and available features.*
+
+### Advanced Confidence Scoring
+
+The server employs an advanced confidence scoring system to provide more accurate assessments of the AI's output quality and relevance, replacing older, simpler methods. This system has two main components:
+
+* **Semantic Relevance (RFC-009):** Measures how relevant the AI's output (thought/draft) is to the provided task context (problem scope, constraints, assumptions). It uses local text embeddings (via `@xenova/transformers`, default model `Xenova/all-MiniLM-L6-v2`) and cosine similarity to understand meaning beyond simple keywords. *(See `docs/rfcs/009-semantic-relevance-confidence.md` for technical details)*.
+* **Optional LLM Coherence Check (RFC-010):** If enabled via environment variables, this uses an external LLM to assess the logical consistency and quality of the AI's output. It requires the configured LLM to support **structured JSON output** (specifically `{"rating": N}` where N is 1-5) requested via the `response_format` parameter. This check is **optional**; if disabled or if the LLM call fails, the system **gracefully falls back** to a neutral default score (0.7) for the coherence component, ensuring the server continues to function. *(See `docs/rfcs/010-llm-coherence-check.md` for technical details)*.
+
+### Usage Example (Sequential Thinking - Step 1)
+
+```json
+// Example call to start a sequential thinking process
+{
+  "tool_name": "sequentialThinking",
+  "arguments": {
+    "thought": "Initial analysis of the user request to refactor the authentication module.",
+    "nextThoughtNeeded": true,
+    "thoughtNumber": 1,
+    "totalThoughts": 5, // Initial estimate
+    "category": {
+      "type": "analysis",
+      "confidence": 0.6
     },
-    config: {
-        confidenceThreshold: 0.7,
-        maxIterations: 3,
-        includeMetadata: true
+    "context": {
+      "problemScope": "Refactor the existing authentication module to improve security and use modern practices.",
+      "constraints": ["Must maintain compatibility with existing user database.", "Minimize downtime during deployment."]
     }
-});
-
-// Compare perspectives
-const comparisonResult = await perspectiveAnalysisApi.comparePerspectives({
-    perspectives: [perspective1, perspective2],
-    config: {
-        similarityThreshold: 0.7,
-        conflictThreshold: 0.3,
-        includeMetrics: true
-    }
-});
-
-// Synthesize perspectives
-const synthesisResult = await perspectiveAnalysisApi.synthesizePerspectives({
-    perspectives: [perspective1, perspective2, perspective3],
-    config: {
-        minCommonGroundStrength: 0.6,
-        maxConflicts: 5,
-        priorityThreshold: 3
-    }
-});
-
-// Optimize perspectives
-const optimizationResult = await perspectiveAnalysisApi.optimizePerspectives({
-    perspectives: [perspective1, perspective2]
-});
-
-// Resolve conflicts
-const resolutionResult = await perspectiveAnalysisApi.resolveConflicts({
-    conflict: {
-        description: 'Conflicting requirements',
-        perspectives: ['123e4567-e89b-12d3-a456-426614174000', '123e4567-e89b-12d3-a456-426614174001'],
-        severity: 0.8,
-        resolutionOptions: ['Option A', 'Option B']
-    },
-    perspectives: [perspective1, perspective2]
-});
-
-// Validate perspectives
-const validationResult = await perspectiveAnalysisApi.validatePerspectives({
-    perspectives: [perspective1, perspective2],
-    config: {
-        strictMode: true,
-        validateRelationships: true,
-        maxValidationDepth: 3
-    }
-});
+  }
+}
 ```
-
-### 2. Chain of Draft (CoD)
-
-Coming soon...
-
-### 3. Sequential Thinking
-
-Coming soon...
 
 ## Installation
 
+Ensure you have Node.js (version >= 16.0.0 recommended) and npm installed.
+
 ```bash
+# Clone the repository (if you haven't already)
+# git clone <repository-url>
+# cd mcp-thought-server
+
+# Install dependencies
 npm install
 ```
 
-## Development
+*Note: The first time you run the server after installation, the `@xenova/transformers` library may download the embedding model (`Xenova/all-MiniLM-L6-v2` by default), which requires an internet connection and may take some time.*
+
+## Development & Usage
 
 ```bash
-# Build the project
+# Build the project (compile TypeScript to JavaScript in build/)
 npm run build
 
 # Run tests
 npm test
 
-# Start the server
+# Start the server (runs node build/index.js)
 npm start
+
+# Run in development mode with auto-reloading (uses ts-node-dev)
+npm run dev
 ```
 
-## Contributing
+The server will start and listen for MCP connections (typically via stdio when launched by an MCP client).
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Configuration (Environment Variables)
 
-## License
+Server behavior can be configured using environment variables. You can set these directly in your shell or use a `.env` file (requires `dotenv` package, which is included).
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### Core MCP Connection
 
-## Environment Variables
+* `MCP_SERVER_URL`: (Optional) MCP server URL if needed for specific configurations (default: `http://localhost:3000` - often unused if stdio is the transport).
+* `MCP_API_KEY`: (Optional) API key if the MCP client requires authentication (default: `default-key`).
 
-### Core Configuration
+### Optional LLM Coherence Check (RFC-010)
 
-- `MCP_SERVER_URL` - MCP server URL (default: <http://localhost:3000>)
-- `MCP_API_KEY` - API key for MCP server authentication
-- `MCP_MAX_RETRIES` - Maximum number of retries for failed requests (default: 3)
-- `MCP_TIMEOUT` - Request timeout in milliseconds (default: 30000)
+Enables a more accurate coherence check using an external LLM. Requires `COHERENCE_API_KEY` and `COHERENCE_CHECK_MODEL` to be set. **The configured LLM must support structured JSON output.**
+
+* `COHERENCE_API_KEY`: **(Required to enable)** API key for the LLM service.
+* `COHERENCE_CHECK_MODEL`: **(Required to enable)** Model identifier (e.g., `openai/gpt-3.5-turbo`, `google/gemma-7b-it`).
+* `COHERENCE_API_BASE`: (Optional) Base URL for OpenAI-compatible endpoints (e.g., OpenRouter, Azure, local Ollama). Defaults to official OpenAI API if unset.
+* `COHERENCE_HTTP_REFERER`: (Optional) Site URL header, potentially used by some proxy services like OpenRouter for ranking/identification.
+* `COHERENCE_X_TITLE`: (Optional) Site title header, potentially used by some proxy services like OpenRouter for ranking/identification.
+
+**Fallback:** If `COHERENCE_API_KEY` or `COHERENCE_CHECK_MODEL` are not set, or if the LLM API call fails or returns an invalid response, the coherence check will use a default neutral score (0.7).
 
 ### Verbose Output Control
 
-The following environment variables control what information is included in the response payload:
+These boolean (`true`/`false`) variables control the level of detail included in the tool response payloads.
 
-#### Core Output Controls
+#### Core Output Controls (Default: `true`)
 
-- `MCP_SHOW_PROCESSING_METRICS` - Show processing time and resource usage (default: true)
-- `MCP_SHOW_SERVICE_METRICS` - Show service-specific metrics (default: true)
-- `MCP_SHOW_MCP_METRICS` - Show MCP integration metrics (default: true)
+* `MCP_SHOW_PROCESSING_METRICS`: Show processing time and resource usage.
+* `MCP_SHOW_SERVICE_METRICS`: Show service-specific metrics.
+* `MCP_SHOW_MCP_METRICS`: Show MCP integration metrics.
 
-#### Detailed Output Controls
+#### Detailed Output Controls (Default: `false`)
 
-- `MCP_SHOW_ADAPTATION_HISTORY` - Show adaptation history in response (default: false)
-- `MCP_SHOW_CATEGORY_HISTORY` - Show category transition history (default: false)
-- `MCP_SHOW_DEPENDENCY_CHAIN` - Show thought/draft dependencies (default: false)
-- `MCP_SHOW_DEBUG_METRICS` - Show detailed debug metrics (default: false)
+* `MCP_SHOW_ADAPTATION_HISTORY`: Show adaptation history.
+* `MCP_SHOW_CATEGORY_HISTORY`: Show category transition history.
+* `MCP_SHOW_DEPENDENCY_CHAIN`: Show thought/draft dependencies.
+* `MCP_SHOW_DEBUG_METRICS`: Show detailed debug metrics.
 
-#### Performance Monitoring
+#### Performance Monitoring (Default: `false`)
 
-- `MCP_SHOW_MEMORY_USAGE` - Show memory usage statistics (default: false)
-- `MCP_SHOW_PARALLEL_TASK_INFO` - Show parallel processing information (default: false)
+* `MCP_SHOW_MEMORY_USAGE`: Show memory usage statistics.
+* `MCP_SHOW_PARALLEL_TASK_INFO`: Show parallel processing information.
 
-#### Backward Compatibility
+#### Backward Compatibility (Default: `true`)
 
-- `MCP_SHOW_FULL_RESPONSE` - Show complete response (overrides other settings if true) (default: true)
+* `MCP_SHOW_FULL_RESPONSE`: Show complete response (overrides other `MCP_SHOW_*` settings if `true`). Set to `false` to enable fine-grained control with the other flags.
 
 ### Example Usage
 
-To run with minimal output:
+To run with minimal output, enabling only core metrics:
 
 ```bash
 export MCP_SHOW_FULL_RESPONSE=false
 export MCP_SHOW_PROCESSING_METRICS=true
 export MCP_SHOW_SERVICE_METRICS=true
 export MCP_SHOW_MCP_METRICS=false
+# ... other MCP_SHOW_* flags default to false ...
+npm start
 ```
 
-To enable detailed debugging:
+To enable the LLM coherence check using OpenRouter:
 
 ```bash
-export MCP_SHOW_FULL_RESPONSE=false
-export MCP_SHOW_DEBUG_METRICS=true
-export MCP_SHOW_MEMORY_USAGE=true
-export MCP_SHOW_DEPENDENCY_CHAIN=true
+export COHERENCE_API_KEY="your-openrouter-key"
+export COHERENCE_CHECK_MODEL="google/gemma-7b-it" # Or another model
+export COHERENCE_API_BASE="https://openrouter.ai/api/v1"
+export COHERENCE_HTTP_REFERER="http://localhost:3000" # Your site URL
+export COHERENCE_X_TITLE="MCPThoughtServer" # Your app name
+npm start
 ```
+
+## Troubleshooting
+
+* **Connection Issues:** Ensure the server is running (`npm start` or `node build/index.js`). Verify the MCP client configuration points to the correct transport (e.g., stdio).
+* **Tool Errors (`InvalidParams`, etc.):** Carefully check the tool's required parameters and types against the linked `*Params.ts` file (e.g., `src/tools/sequentialThinkingParams.ts`). Zod validation is strict. Check server logs for detailed validation errors if possible.
+* **LLM Coherence Check Issues:** If enabled, verify `COHERENCE_API_KEY`, `COHERENCE_CHECK_MODEL`, and `COHERENCE_API_BASE` environment variables are correctly set. Check the status of the external LLM service. Ensure the selected model supports the required structured JSON output format. Check server logs for API errors.
+* **Low Confidence Scores:** May indicate the AI's output is genuinely not relevant (check semantic similarity score component) or not coherent (if LLM check is enabled), or that the `context` provided to the tool was insufficient or poorly defined.
+* **Embedding Model Download Failure:** Ensure an internet connection is available the first time the server runs to download the sentence transformer model. Check permissions for the cache directory (e.g., `~/.cache/huggingface/hub/`).
+* **General:** Check the server's console output (stdout/stderr) for more detailed error messages or logging information.
+
+## Architecture Overview (Brief)
+
+The server is a Node.js application built with TypeScript. It follows standard MCP server patterns, using the `@modelcontextprotocol/sdk`. Key logic is separated into:
+
+* **Tools (`src/tools/`):** Define MCP tool interfaces (using Zod schemas) and handle request validation/routing.
+* **Services (`src/services/`):** Encapsulate the core logic for each thinking strategy (`sequentialThinking`, `chainOfDraft`, `integratedThinking`).
+* **Configuration (`src/config/`):** Manages settings and environment variables.
+* **Utilities (`src/utils/`):** Shared functions for tasks like logging, embeddings, similarity, and coherence checks.
+* **Types (`src/types/`):** Centralized TypeScript definitions.
+
+## Contributing
+
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes (`git commit -m 'Add some amazing feature'`).
+4. Push to the branch (`git push origin feature/amazing-feature`).
+5. Open a Pull Request.
+
+## License
+
+ISC - See the LICENSE file for details (Note: LICENSE file does not currently exist in the provided file list).

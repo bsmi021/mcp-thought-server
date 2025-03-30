@@ -193,7 +193,8 @@ export const integratedConfigSchema = z.object({
         confidenceThreshold: z.number().min(0).max(1).optional(),
         // Added new optional fields to match CoreConfig
         embeddingModel: z.string().optional(),
-        includePreviousStepTextInContext: z.boolean().optional()
+        includePreviousStepTextInContext: z.boolean().optional(),
+        enableLLMCoherenceCheck: z.boolean().optional() // Added flag for LLM check
     }),
     enhancementConfig: z.object({
         enableCrossServiceOptimization: z.boolean().optional(),

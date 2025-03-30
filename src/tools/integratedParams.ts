@@ -3,347 +3,6 @@ import { contextSchema } from '../utils/index.js';
 
 export const TOOL_NAME = "integratedThinking";
 
-/* PARAMETERS EXPLAINED
-
-Required Parameters:
-------------------
-content: The main content to be processed
-- Must contain the primary text/data for processing
-- No size limit but affects performance
-- Used in confidence calculations
-- Core input for both sequential and draft processing
-
-thoughtNumber: Current thought number in sequence
-- Must start at 1 and increment sequentially
-- Used for tracking progress
-- Critical for revision chains
-- Affects confidence inheritance
-
-totalThoughts: Estimated total thoughts needed
-- Initial estimate that can be adjusted
-- Minimum value: 1
-- Used for resource allocation
-- Affects parallel processing decisions
-
-draftNumber: Current draft number
-- Must start at 1 and increment
-- Tracks progress in draft chain
-- Used in revision management
-- Critical for draft relationships
-
-totalDrafts: Estimated total drafts needed
-- Initial estimate that can be adjusted
-- Minimum value: 1
-- Used for resource planning
-- Affects quality thresholds
-
-needsRevision: Boolean flag for revision state
-- true = Current content needs revision
-- false = Content meets quality threshold
-- Affects next step decisions
-- Triggers revision processes
-
-nextStepNeeded: Control flow indicator
-- true = More processing steps required
-- false = Current phase complete
-- Controls workflow progression
-- Affects resource allocation
-
-PARAMETER RELATIONSHIPS
-
-1. Draft-Thought Relationship:
-   - thoughtNumber tracks sequential thinking progress
-   - draftNumber tracks draft refinement progress
-   - Both must increment properly within their chains
-   - Can't have draft without associated thought
-
-2. Revision Chain:
-   - needsRevision triggers revision processes
-   - isRevision indicates revision state
-   - revisesDraft must reference valid draft
-   - Affects confidence calculations
-
-3. Category-Confidence Flow:
-   - category.type affects processing path
-   - category.confidence influences decisions
-   - Overall confidence calculated from multiple factors
-   - Thresholds vary by category type
-
-4. Context Inheritance:
-   - Context flows through thought chain
-   - Draft inherits context from thoughts
-   - Revisions maintain context lineage
-   - Critical for coherence
-
-ERROR HANDLING AND PERFORMANCE
-
-1. Validation Errors:
-   - Invalid parameter combinations
-   - Out-of-sequence numbers
-   - Missing required relationships
-   - Resolution strategies
-
-2. Performance Considerations:
-   - Content size impacts
-   - Resource allocation
-   - Parallel processing limits
-   - Memory management
-
-3. Quality Control:
-   - Confidence thresholds
-   - Revision triggers
-   - Context validation
-   - Output verification
-
-VALIDATION RULES
-
-1. Required Parameters:
-   - content, thoughtNumber, totalThoughts, draftNumber, totalDrafts,
-     needsRevision, and nextStepNeeded must always be present
-   - thoughtNumber and draftNumber must be >= 1
-   - totalThoughts and totalDrafts must be >= thoughtNumber and draftNumber respectively
-
-2. Revision Rules:
-   - If isRevision is true, revisesDraft must be present and < current draftNumber
-   - If needsRevision is true, nextStepNeeded should be true
-   - category.confidence affects revision triggers
-
-3. Category Rules:
-   - type must be one of: 'initial', 'critique', 'revision', 'final'
-   - confidence must be between 0 and 1
-   - 'final' type requires high confidence (>= 0.9)
-
-4. Feature Rules:
-   - mcpFeatures can enable/disable specific processing capabilities
-   - parallelProcessing requires monitoring to be true
-   - sequentialThinking and draftProcessing can't both be false
-
-USAGE EXAMPLES
-
-1. Basic Processing:
-{
-  content: "Analyzing performance bottlenecks in the system",
-  thoughtNumber: 1,
-  totalThoughts: 5,
-  draftNumber: 1,
-  totalDrafts: 3,
-  needsRevision: false,
-  nextStepNeeded: true,
-  category: {
-    type: 'initial',
-    confidence: 0.8
-  },
-  mcpFeatures: {
-    sequentialThinking: true,
-    draftProcessing: true,
-    monitoring: true
-  }
-}
-
-2. Revision Example:
-{
-  content: "Revised approach: Implement caching layer before database queries",
-  thoughtNumber: 2,
-  totalThoughts: 5,
-  draftNumber: 2,
-  totalDrafts: 3,
-  needsRevision: false,
-  nextStepNeeded: true,
-  isRevision: true,
-  revisesDraft: 1,
-  category: {
-    type: 'revision',
-    confidence: 0.9
-  },
-  context: {
-    problemScope: "Performance Optimization",
-    assumptions: ["High read/write ratio", "Available memory sufficient"]
-  }
-}
-
-3. Final Integration Example:
-{
-  content: "Implementing final solution with all optimizations",
-  thoughtNumber: 5,
-  totalThoughts: 5,
-  draftNumber: 3,
-  totalDrafts: 3,
-  needsRevision: false,
-  nextStepNeeded: false,
-  category: {
-    type: 'final',
-    confidence: 0.95
-  },
-  mcpFeatures: {
-    sequentialThinking: true,
-    draftProcessing: true,
-    parallelProcessing: true,
-    monitoring: true
-  }
-}
-
-4. Error Handling Example:
-{
-  content: "Error detected in caching implementation",
-  thoughtNumber: 3,
-  totalThoughts: 6,  // Increased due to error
-  draftNumber: 2,
-  totalDrafts: 4,    // Increased for revision
-  needsRevision: true,
-  nextStepNeeded: true,
-  category: {
-    type: 'critique',
-    confidence: 0.4  // Low confidence triggered revision
-  },
-  context: {
-    problemScope: "Error Resolution",
-    constraints: ["Must maintain existing API", "Zero downtime required"]
-  }
-}
-
-Category System:
---------------
-The integrated thinking tool uses the same category types as chainOfDraft but with enhanced context
-awareness and integration with sequential thinking:
-
-1. 'initial' - First stage combining draft and thought
-   - Used for initial problem analysis and first draft
-   - Combines sequential analysis with draft creation
-   - Typically starts with moderate confidence (0.5-0.7)
-   Example:
-   {
-     content: "Initial analysis of performance bottlenecks",
-     thoughtNumber: 1,
-     totalThoughts: 5,
-     draftNumber: 1,
-     totalDrafts: 3,
-     category: {
-       type: 'initial',
-       confidence: 0.6,
-       metadata: {
-         phase: 'problem_analysis',
-         thinking_stage: 'exploration'
-       }
-     }
-   }
-
-2. 'critique' - Combined analysis and review
-   - Integrates sequential thinking analysis with draft critique
-   - Requires both thought analysis and draft review
-   - Should specify critiqueFocus for clarity
-   Example:
-   {
-     content: "Critical analysis of proposed solution",
-     thoughtNumber: 2,
-     totalThoughts: 5,
-     draftNumber: 1,
-     totalDrafts: 3,
-     category: {
-       type: 'critique',
-       confidence: 0.85,
-       metadata: {
-         analysis_focus: 'feasibility',
-         critique_aspects: ['performance', 'scalability']
-       }
-     },
-     isCritique: true,
-     critiqueFocus: 'solution_viability'
-   }
-
-3. 'revision' - Iterative improvement
-   - Combines sequential thought revision with draft updates
-   - Must reference both previous thought and draft
-   - Higher confidence threshold than initial (0.7-0.9)
-   Example:
-   {
-     content: "Revised approach based on performance analysis",
-     thoughtNumber: 3,
-     totalThoughts: 5,
-     draftNumber: 2,
-     totalDrafts: 3,
-     category: {
-       type: 'revision',
-       confidence: 0.8,
-       metadata: {
-         revision_basis: 'performance_analysis',
-         thought_chain: ['analysis', 'critique', 'revision']
-       }
-     },
-     isRevision: true,
-     revisesDraft: 1
-   }
-
-4. 'final' - Complete solution
-   - Represents both final thought and polished draft
-   - Requires highest confidence level (>= 0.9)
-   - Must show thought progression and draft evolution
-   Example:
-   {
-     content: "Final optimized solution with implementation details",
-     thoughtNumber: 5,
-     totalThoughts: 5,
-     draftNumber: 3,
-     totalDrafts: 3,
-     category: {
-       type: 'final',
-       confidence: 0.95,
-       metadata: {
-         thought_completion: true,
-         draft_validated: true,
-         final_checks: ['completeness', 'correctness', 'optimization']
-       }
-     },
-     needsRevision: false,
-     nextStepNeeded: false
-   }
-
-Confidence Scoring in Integrated Context:
---------------------------------------
-Confidence scores consider both thinking and drafting aspects:
-
-1. Thinking Component (50% weight):
-   - Problem understanding: 0-0.3
-   - Analysis depth: 0-0.3
-   - Solution viability: 0-0.4
-
-2. Drafting Component (50% weight):
-   - Content quality: 0-0.3
-   - Completeness: 0-0.3
-   - Refinement: 0-0.4
-
-Combined Score Interpretation:
-- < 0.4: Critical issues in either thinking or drafting
-- 0.4-0.6: Basic progress, needs significant improvement
-- 0.6-0.8: Good progress, minor refinements needed
-- 0.8-0.9: High quality, final review stage
-- >= 0.9: Excellent, ready for completion
-
-Category Relationships and Transitions:
------------------------------------
-1. Initial -> Critique:
-   - Requires complete thought analysis
-   - Draft must be substantial enough for review
-   - Context preservation across both aspects
-
-2. Critique -> Revision:
-   - Thought analysis must support critique findings
-   - Draft revisions must address identified issues
-   - Maintains dual context awareness
-
-3. Revision -> Final:
-   - Both thought chain and draft must be complete
-   - All critiques must be addressed
-   - High confidence required in both aspects
-
-Integration with MCP Features:
----------------------------
-The category system integrates with MCP features through:
-1. Sequential thinking enabled: Affects thought progression
-2. Draft processing active: Influences draft refinement
-3. Parallel processing: Allows concurrent thought/draft work
-4. Monitoring: Tracks both thought and draft metrics
-*/
-
 // Enhanced tool parameters schema with integrated category documentation
 export const TOOL_PARAMS = {
   content: z.string().describe("The main content to be processed"),
@@ -353,10 +12,10 @@ export const TOOL_PARAMS = {
   totalDrafts: z.number().min(1).describe("Estimated total drafts needed"),
   needsRevision: z.boolean().describe("True if current content needs revision"),
   nextStepNeeded: z.boolean().describe("True if more steps are needed in the process"),
-  isRevision: z.boolean().describe("True if this is a revision").optional(),
-  revisesDraft: z.number().min(1).describe("If isRevision is true, which draft is being revised").optional(),
-  isCritique: z.boolean().describe("True if this is a critique").optional(),
-  critiqueFocus: z.string().describe("Focus area of the critique").optional(),
+  isRevision: z.boolean().describe("Set to true if this step represents a revised version of a previous draft. *(If true, 'revisesDraft' MUST be provided)*.").optional(),
+  revisesDraft: z.number().min(1).describe("*(Required if isRevision is true)*. Specifies the draftNumber being revised. Must be less than the current draftNumber.").optional(),
+  isCritique: z.boolean().describe("Set to true if this step involves providing a critique of a draft (content should be the critique text). *(If true, 'critiqueFocus' is strongly recommended)*.").optional(),
+  critiqueFocus: z.string().describe("*(Optional, but strongly recommended if isCritique is true)*. Specifies the focus area of the critique (e.g., 'clarity', 'completeness', 'accuracy').").optional(),
   reasoningChain: z.array(z.string()).describe("Array of reasoning steps").optional(),
   category: z.object({
     type: z.enum(['initial', 'critique', 'revision', 'final']).describe(`
@@ -380,8 +39,8 @@ export const TOOL_PARAMS = {
             >= 0.9: Excellent
         `),
     metadata: z.record(z.unknown()).describe("Additional stage-specific information for both thought and draft aspects").optional()
-  }).describe("Integrated categorization for both thinking and drafting processes").optional(),
-  confidence: z.number().min(0).max(1).describe("Overall confidence level").optional(), // Keeping original TOOL_PARAMS definition
+  }).describe("Integrated categorization for both thinking and drafting processes"), // Removed .optional()
+  // Deprecated top-level confidence removed. Use category.confidence.
   context: contextSchema.describe("Additional context for integrated processing").optional(),
   mcpFeatures: z.object({
     sequentialThinking: z.boolean().optional(),
@@ -405,7 +64,7 @@ Processes content through iterative cycles of thinking (analysis, hypothesis, ve
 *   \`totalDrafts\`: (number) Estimated total draft iterations needed (can be adjusted).
 *   \`needsRevision\`: (boolean) Flag indicating if the current content requires revision?
 *   \`nextStepNeeded\`: (boolean) Are more processing steps required after this one?
-*   \`category\`: (object) Categorization for the current stage (see details below).
+*   \`category\`: (object) Categorization for the current stage (see details below). **This object is REQUIRED.**
 
 **Key Parameter Rules & Relationships:**
 *   **Category Object (Required):** This object MUST be provided.
@@ -423,7 +82,7 @@ Processes content through iterative cycles of thinking (analysis, hypothesis, ve
     *   0.6-0.8: Good progress.
     *   0.8-0.9: High quality.
     *   >= 0.9: Excellent (Required for 'final' stage).
-*   **Deprecated Parameter:** The top-level optional \`confidence\` parameter is unused and **SHOULD NOT** be provided. Use \`category.confidence\` instead.
+*   **Deprecated Parameter:** The top-level optional \`confidence\` parameter has been removed. Use \`category.confidence\` instead.
 
 **Suggested Workflow & Examples:**
 1.  **Initial:** Start with \`category.type='initial'\`, \`thoughtNumber=1\`, \`draftNumber=1\`.
@@ -482,15 +141,37 @@ Processes content through iterative cycles of thinking (analysis, hypothesis, ve
       "category": { "type": "final", "confidence": 0.95 } // Category REQUIRED, high confidence
     }
     \`\`\`
+5.  **Error Handling Example (Corrected):**
+    \`\`\`json
+    {
+      "content": "Error detected in caching implementation",
+      "thoughtNumber": 3,
+      "totalThoughts": 6,  // Increased due to error
+      "draftNumber": 2,
+      "totalDrafts": 4,    // Increased for revision
+      "needsRevision": true,
+      "nextStepNeeded": true,
+      "isCritique": true, // Added missing flag for critique type
+      "category": {
+        "type": "critique",
+        "confidence": 0.4  // Low confidence triggered revision
+      },
+      "context": {
+        "problemScope": "Error Resolution",
+        "constraints": ["Must maintain existing API", "Zero downtime required"]
+      }
+    }
+    \`\`\`
+
 
 **Best Practices:**
 *   Strictly adhere to the **REQUIRED Parameters** and **Conditional Requirements**.
 *   Ensure \`category.type\` matches the action and associated flags (\`isRevision\`, \`isCritique\`).
 *   Increment \`thoughtNumber\` and \`draftNumber\` appropriately based on the workflow stage.
+*   Validate Category Types:  Valid types are: 'initial', 'critique', 'revision', 'final'
+*   NOTE: The category type is the only name that can be used. Terms like 'analysis', 'hypothesis', 'evaluation', 'conclusion' are descriptions of stages but not valid category types.
 
 **Error Handling:**
 *   Incorrect parameter combinations (especially conditional ones) will cause errors.
 *   Ensure \`category.confidence\` meets the threshold for the 'final' stage.
 `;
-
-// Note: Removed final comment block about Parameter Relationships as info is integrated above.

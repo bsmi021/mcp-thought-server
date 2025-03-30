@@ -76,7 +76,7 @@ export const integratedTool = (server: McpServer, config?: Partial<IntegratedCon
             if (validatedInput.category?.type && !['initial', 'critique', 'revision', 'final'].includes(validatedInput.category.type)) {
                 throw new McpError(
                     ErrorCode.InvalidParams,
-                    `Invalid category type "${validatedInput.category.type}". Valid types are: 'initial', 'critique', 'revision', 'final'. Note: Terms like 'analysis' are descriptions of stages but not valid category types.`
+                    `Invalid category type "${validatedInput.category.type}". Valid types are: 'initial', 'critique', 'revision', 'final'. Note: Terms like 'analysis', 'hypothesis', 'evaluation', 'conclusion' are descriptions of stages but not valid category types.`
                 );
             }
 
@@ -133,7 +133,7 @@ export const integratedTool = (server: McpServer, config?: Partial<IntegratedCon
                 critiqueFocus: validatedInput.critiqueFocus,
                 reasoningChain: validatedInput.reasoningChain,
                 category: validatedInput.category,
-                confidence: validatedInput.confidence,
+                // confidence: validatedInput.confidence, // Removed - Use category.confidence
                 context: validatedInput.context,
                 mcpFeatures: validatedInput.mcpFeatures
             };
@@ -194,4 +194,4 @@ export const integratedTool = (server: McpServer, config?: Partial<IntegratedCon
             }
         }
     );
-}; 
+};

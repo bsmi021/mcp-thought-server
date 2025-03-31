@@ -5,15 +5,17 @@ import { integratedTool } from "./integratedTool.js";
 import { setFeatureTool } from "./setFeatureTool.js";
 import { ConfigurationManager } from "../config/ConfigurationManager.js";
 import { DebugControlService } from "../services/DebugControlService.js";
+import { StorageService } from "../services/StorageService.js"; // +++ Import StorageService
 
 /**
- * Register all tools with the MCP server
+ * Register all tools with the MCP server, passing the StorageService instance.
  */
-export function registerTools(server: McpServer): void {
-    registerThinkingTool(server);
-    registerDraftTool(server);
-    registerIntegratedTool(server);
-    setFeatureTool(server);
+// +++ Modify signature to accept StorageService +++
+export function registerTools(server: McpServer, storageService: StorageService): void {
+    registerThinkingTool(server); // Doesn't need storage yet
+    registerDraftTool(server, storageService); // +++ Pass storageService
+    registerIntegratedTool(server, storageService); // +++ Pass storageService
+    setFeatureTool(server); // Doesn't need storage
 }
 
 function registerThinkingTool(server: McpServer): void {
@@ -34,7 +36,8 @@ function registerThinkingTool(server: McpServer): void {
     });
 }
 
-function registerDraftTool(server: McpServer): void {
+// +++ Modify signature to accept StorageService +++
+function registerDraftTool(server: McpServer, storageService: StorageService): void {
     const configManager = ConfigurationManager.getInstance();
     const debugControl = DebugControlService.getInstance();
     const draftConfig = configManager.getDraftConfig();
@@ -45,19 +48,22 @@ function registerDraftTool(server: McpServer): void {
         dynamicAdaptation: true
     };
 
-    draftTool(server, {
+    // +++ Pass storageService to draftTool +++
+    draftTool(server, storageService, {
         core: draftConfig,
         enhancement: enhancementConfig,
         debug: debugControl.getDebugState()
     });
 }
 
-function registerIntegratedTool(server: McpServer): void {
+// +++ Modify signature to accept StorageService +++
+function registerIntegratedTool(server: McpServer, storageService: StorageService): void {
     const configManager = ConfigurationManager.getInstance();
     const debugControl = DebugControlService.getInstance();
     const integratedConfig = configManager.getIntegratedConfig();
 
-    integratedTool(server, {
+    // +++ Pass storageService to integratedTool +++
+    integratedTool(server, storageService, {
         draftConfig: integratedConfig.draftConfig,
         sequentialConfig: integratedConfig.sequentialConfig,
         enhancementConfig: integratedConfig.enhancementConfig,

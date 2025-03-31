@@ -7,13 +7,18 @@ import { IntegratedConfig } from "../types/integrated.js";
 import { logger } from '../utils/index.js';
 
 // Service instance with configuration
+import { StorageService } from '../services/StorageService.js'; // +++ Import StorageService
+
+// Service instance with configuration
 let integratedService: IntegratedThinkingService | null = null;
 
-export const integratedTool = (server: McpServer, config?: Partial<IntegratedConfig>): void => {
-    // Initialize service with configuration if provided
-    integratedService = new IntegratedThinkingService(config as IntegratedConfig);
+// +++ Modify function signature to accept StorageService +++
+export const integratedTool = (server: McpServer, storageService: StorageService, config?: Partial<IntegratedConfig>): void => {
+    // Initialize service with configuration and StorageService
+    integratedService = new IntegratedThinkingService(config as IntegratedConfig, storageService); // +++ Pass storageService
 
-    const processIntegrated = async (input: Record<string, unknown>) => {
+    // +++ Modified signature to accept sessionId
+    const processIntegrated = async (input: Record<string, unknown>, sessionId: string) => {
         if (!integratedService) {
             throw new McpError(
                 ErrorCode.InternalError,
@@ -91,9 +96,11 @@ export const integratedTool = (server: McpServer, config?: Partial<IntegratedCon
             // Validate stage progression
             if (validatedInput.category?.type === 'final' && validatedInput.thoughtNumber && validatedInput.totalThoughts &&
                 validatedInput.thoughtNumber < validatedInput.totalThoughts) {
+                // Suggest a more appropriate category based on whether it's likely a critique or revision step
+                const suggestedCategory = validatedInput.thoughtNumber % 2 === 0 ? 'critique' : 'revision'; // Simple heuristic
                 throw new McpError(
                     ErrorCode.InvalidParams,
-                    `Cannot use 'final' stage before last thought. Current: ${validatedInput.thoughtNumber}, Total: ${validatedInput.totalThoughts}`
+                    `Cannot use category.type 'final' (thought ${validatedInput.thoughtNumber}) until the last thought (thought ${validatedInput.totalThoughts}). Consider using '${suggestedCategory}' or another appropriate intermediate type.`
                 );
             }
 
@@ -139,7 +146,8 @@ export const integratedTool = (server: McpServer, config?: Partial<IntegratedCon
             };
 
             // Process the integrated thought
-            const result = await integratedService.processIntegratedThought(transformedInput);
+            // +++ Pass sessionId down
+            const result = await integratedService.processIntegratedThought(transformedInput, sessionId);
 
             // Validate the result
             const validatedResult = z.object({
@@ -174,16 +182,20 @@ export const integratedTool = (server: McpServer, config?: Partial<IntegratedCon
         TOOL_NAME,
         TOOL_DESCRIPTION,
         TOOL_PARAMS,
-        async (args, extra) => {
+        async (args, extra) => { // 'extra' contains MCP context like sessionId
+            const sessionId = extra?.sessionId || 'default_session'; // Extract sessionId, provide default
+            logger.info(`Handling integratedTool request for session: ${sessionId}`); // Log session ID
             try {
-                const sessionId = extra.sessionId || 'default';
+                // +++ Pass sessionId to processIntegrated
+                const result = await processIntegrated(args, sessionId);
                 return {
                     content: [{
                         type: "text" as const,
-                        text: JSON.stringify(await processIntegrated(args))
+                        text: JSON.stringify(result) // Use the result directly
                     }]
                 };
             } catch (error) {
+                logger.error(`Error processing integratedTool for session ${sessionId}:`, error); // Log error with session ID
                 if (error instanceof McpError) {
                     throw error;
                 }

@@ -6,7 +6,7 @@ export const TOOL_NAME = "sequentialThinking";
 // Zod schema defining the input parameters for the sequentialThinking tool.
 // Descriptions are crucial for LLM understanding and correct usage.
 export const TOOL_PARAMS = {
-  thought: z.string().describe("(Required) The content of the current thinking step (e.g., analysis, hypothesis, revision)."),
+  thought: z.string().describe("****(Required) The content of the current thinking step (e.g., analysis, hypothesis, revision)."),
   nextThoughtNeeded: z.boolean().describe("(Required) Boolean flag indicating if further thinking steps are required in the current sequence/branch."),
   thoughtNumber: z.number().min(1).describe("(Required) The sequential number of this thought within its branch (starts at 1)."),
   totalThoughts: z.number().min(1).describe("(Required) The current estimated total number of thoughts needed for this sequence/branch (can be adjusted)."),
@@ -45,10 +45,10 @@ export const TOOL_DESCRIPTION = `A powerful tool for dynamic and reflective prob
 **Core Functionality:**
 Guides an iterative thinking process step-by-step. Each call represents one 'thought'. Manages state including thought numbers, branches, categories, and confidence. Supports dynamic adaptation based on progress and metrics.
 
-**REQUIRED Parameters (MUST be provided in EVERY call):**
-*   \`thought\`: (string) The content of the current thinking step.
-*   \`nextThoughtNeeded\`: (boolean) Are more thinking steps required after this one?
-*   \`thoughtNumber\`: (number) The sequential number of this thought within its branch (starts at 1).
+ **REQUIRED Parameters (MUST be provided in EVERY call):**
+ *   \`thought\`: (string) ****YOU MUST HAVE THIS****The content of the current thinking step. **CRITICAL: Even for the first call (\`thoughtNumber: 1\`), this MUST contain the initial problem statement or analysis.**
+ *   \`nextThoughtNeeded\`: (boolean) Are more thinking steps required after this one?
+ *   \`thoughtNumber\`: (number) The sequential number of this thought within its branch (starts at 1).
 *   \`totalThoughts\`: (number) The current estimated total thoughts needed for this sequence/branch.
 *   \`category\`: (object) Categorization for the current stage (see details below).
 

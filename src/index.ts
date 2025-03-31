@@ -58,7 +58,8 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(fileURLToPath(import.meta.url), '..');
 
-const server = createServer();
+// --- Server creation moved inside main as it's now async ---
+// const server = createServer();
 
 // Export the Perspective Analysis System
 export {
@@ -114,10 +115,13 @@ export type {
 
 const main = async () => {
     try {
+        // +++ Await server creation +++
+        const server = await createServer();
         const transport = new StdioServerTransport();
         await server.connect(transport);
+        logger.info("MCP Thought Server connected via stdio."); // Add confirmation log
     } catch (error) {
-        logger.error("Failed to start server:", error);
+        logger.error("Failed to initialize or start server:", error); // More specific error
     }
 }
 

@@ -13,7 +13,7 @@ export const TOOL_PARAMS = {
   needsRevision: z.boolean().describe("REQUIRED: True if current content needs revision"),
   nextStepNeeded: z.boolean().describe("REQUIRED:True if more steps are needed in the process"),
   isRevision: z.boolean().describe("Set to true if this step represents a revised version of a previous draft. *(If true, 'revisesDraft' MUST be provided)*.").optional(),
-  revisesDraft: z.number().min(1).describe("*(Required if isRevision is true)*. Specifies the draftNumber being revised. Must be less than the current draftNumber.").optional(),
+  revisesDraft: z.number().min(1).describe("*(Required if isRevision is true)*. Specifies the draftNumber being revised. ***Warning***: Must be less than the current draftNumber.").optional(),
   isCritique: z.boolean().describe("Set to true if this step involves providing a critique of a draft (content should be the critique text). *(If true, 'critiqueFocus' is strongly recommended)*.").optional(),
   critiqueFocus: z.string().describe("*(Optional, but strongly recommended if isCritique is true)*. Specifies the focus area of the critique (e.g., 'clarity', 'completeness', 'accuracy').").optional(),
   reasoningChain: z.array(z.string()).describe("Array of reasoning steps").optional(),
@@ -75,7 +75,7 @@ Processes content through iterative cycles of thinking (analysis, hypothesis, ve
     *   If \`isRevision\` flag is set to \`true\`, then \`revisesDraft\` (number) **MUST** also be provided and its value must be less than the current \`draftNumber\`.
     *   If \`category.type\` is set to 'revision', then the \`isRevision\` flag (boolean) **MUST** be set to \`true\`.
     *   If \`category.type\` is set to 'critique', then the \`isCritique\` flag (boolean) **MUST** be set to \`true\`. Providing \`critiqueFocus\` (string) is strongly recommended.
-    *   If \`category.type\` is set to 'final', then \`needsRevision\` **MUST** be \`false\` and \`nextStepNeeded\` **MUST** be \`false\`.
+    *   If \`category.type\` is set to 'final', then \`thoughtNumber\` **MUST** equal \`totalThoughts\`. Additionally, \`needsRevision\` **MUST** be \`false\` and \`nextStepNeeded\` **MUST** be \`false\`.
 *   **Confidence Interpretation (\`category.confidence\`):**
     *   < 0.4: Critical issues.
     *   0.4-0.6: Basic progress.
@@ -83,7 +83,7 @@ Processes content through iterative cycles of thinking (analysis, hypothesis, ve
     *   0.8-0.9: High quality.
     *   >= 0.9: Excellent (Required for 'final' stage).
 *   **Deprecated Parameter:** The top-level optional \`confidence\` parameter has been removed. Use \`category.confidence\` instead.
-
+*   **Warning:** The \`revisesDraft\` parameter is critical for revision stages. If \`isRevision\` is true, \`revisesDraft\` must be provided and must be less than the current \`draftNumber\`.
 **Suggested Workflow & Examples:**
 1.  **Initial:** Start with \`category.type='initial'\`, \`thoughtNumber=1\`, \`draftNumber=1\`.
     \`\`\`json

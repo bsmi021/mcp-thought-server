@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerTools } from "./tools/index.js";
 import { logger } from "./utils/index.js";
-import { SequentialThinkingService, PrototypingService } from "./services/index.js";
+import { StorageService, SequentialThinkingService, PrototypingService } from "./services/index.js"; // +++ Import StorageService
 import { FeedbackLoopService } from "./services/feedback.js";
 import { FeedbackOptimizationService } from "./services/optimization.js";
 import feedbackConfig from "./config/feedback.js";
@@ -38,17 +38,22 @@ const capabilities = {
     }
 }
 
-export const createServer = (): McpServer => {
+// +++ Make async to allow await for storage initialization +++
+export const createServer = async (): Promise<McpServer> => {
     // Create a new MCP server
     const server = new McpServer(
         serverConfig,
         capabilities
     );
 
-    // Initialize services
-    const sequentialThinkingService = new SequentialThinkingService();
-    const feedbackService = new FeedbackLoopService();
-    const optimizationService = new FeedbackOptimizationService();
+    // +++ Initialize StorageService +++
+    const storageService = new StorageService();
+    await storageService.initialize(); // Ensure DB is ready before proceeding
+
+    // Initialize other services (passing storageService if needed in future)
+    // const sequentialThinkingService = new SequentialThinkingService(storageService); // Example if needed
+    const feedbackService = new FeedbackLoopService(); // Doesn't need storage yet
+    const optimizationService = new FeedbackOptimizationService(); // Doesn't need storage yet
     const prototypingService = new PrototypingService();
 
     // Set up error handler
@@ -117,8 +122,17 @@ export const createServer = (): McpServer => {
         };
     }
 
-    // Register tools
-    registerTools(server);
+    // Register tools, passing the initialized StorageService
+    registerTools(server, storageService);
+
+    // Add graceful shutdown for storage service
+    const originalClose = server.close;
+    server.close = async () => {
+        await storageService.close();
+        await originalClose.call(server);
+        logger.info("Server and storage service shut down gracefully.");
+    };
+
 
     return server;
 }

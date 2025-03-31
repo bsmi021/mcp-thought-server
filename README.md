@@ -27,12 +27,13 @@ The server provides the following tools for structured thinking via MCP:
         B --> V;
     ```
 
+* **Usage Note:** The `thought` parameter is **required** even on the first call (`thoughtNumber: 1`) and must contain the initial problem statement or analysis.
 * **Parameter Reference:** *See `src/tools/sequentialThinkingParams.ts` for detailed parameters, descriptions, and usage examples.*
 
 ### Chain of Draft (`chainOfDraft`)
 
 * **Purpose:** Facilitates iterative content generation and refinement through cycles of drafting, critiquing, and revising.
-* **Key Concepts:** Manages distinct drafting stages (initial, critique, revision, final) and state, including draft numbers.
+* **Key Concepts:** Manages distinct drafting stages (initial, critique, revision, final) and state, including draft numbers. Draft history is persisted using SQLite.
 * **Workflow Diagram:**
 
     ```mermaid
@@ -48,7 +49,7 @@ The server provides the following tools for structured thinking via MCP:
 ### Integrated Thinking (`integratedThinking`)
 
 * **Purpose:** Combines Sequential Thinking and Chain of Draft for complex tasks requiring both structured reasoning and iterative content refinement.
-* **Key Concepts:** Integrates both methodologies and manages combined state (thought and draft numbers).
+* **Key Concepts:** Integrates both methodologies and manages combined state (thought and draft numbers). Relies on SQLite for draft history persistence via the underlying `ChainOfDraftService`.
 * **Workflow Diagram (Simplified):**
 
     ```mermaid
@@ -62,6 +63,7 @@ The server provides the following tools for structured thinking via MCP:
     ```
 
     *(Note: This diagram simplifies the potentially complex interplay)*
+* **Usage Note:** The `category.type: 'final'` can only be used when `thoughtNumber` equals `totalThoughts`.
 * **Parameter Reference:** *See `src/tools/integratedParams.ts` for detailed parameters, descriptions, and usage examples.*
 
 ### Set Feature (`setFeature`)
@@ -84,7 +86,7 @@ The server employs an advanced confidence scoring system to provide more accurat
 {
   "tool_name": "sequentialThinking",
   "arguments": {
-    "thought": "Initial analysis of the user request to refactor the authentication module.",
+    "thought": "Initial analysis of the user request to refactor the authentication module.", // Required!
     "nextThoughtNeeded": true,
     "thoughtNumber": 1,
     "totalThoughts": 5, // Initial estimate
@@ -109,7 +111,7 @@ Ensure you have Node.js (version >= 16.0.0 recommended) and npm installed.
 # git clone <repository-url>
 # cd mcp-thought-server
 
-# Install dependencies
+# Install dependencies (includes sqlite3)
 npm install
 ```
 
@@ -136,6 +138,15 @@ The server will start and listen for MCP connections (typically via stdio when l
 ## Configuration (Environment Variables)
 
 Server behavior can be configured using environment variables. You can set these directly in your shell or use a `.env` file (requires `dotenv` package, which is included).
+
+### SQLite Persistence (RFC-012)
+
+To ensure reliable state persistence (like draft history) across requests, especially in environments that might reset process memory, the server uses an embedded SQLite database.
+
+* `MCP_SQLITE_PATH`: (Optional) Specifies the file path for the SQLite database.
+  * If not set, defaults to `data/mcp-thought-server.sqlite` relative to the project root. A warning will be logged if the default is used.
+  * The directory containing the file will be created automatically if it doesn't exist.
+* **Note:** Ensure the `data/` directory (or the custom directory specified) and `*.sqlite` files are added to your `.gitignore`.
 
 ### Core MCP Connection
 
@@ -204,13 +215,24 @@ export COHERENCE_X_TITLE="MCPThoughtServer" # Your app name
 npm start
 ```
 
+To specify a custom SQLite database location:
+
+```bash
+export MCP_SQLITE_PATH="/path/to/your/data/custom_thoughts.sqlite"
+npm start
+```
+
 ## Troubleshooting
 
 * **Connection Issues:** Ensure the server is running (`npm start` or `node build/index.js`). Verify the MCP client configuration points to the correct transport (e.g., stdio).
 * **Tool Errors (`InvalidParams`, etc.):** Carefully check the tool's required parameters and types against the linked `*Params.ts` file (e.g., `src/tools/sequentialThinkingParams.ts`). Zod validation is strict. Check server logs for detailed validation errors if possible.
+  * *Common Error:* For `sequentialThinking`, ensure the `thought` parameter is provided even on the first call (`thoughtNumber: 1`).
+  * *Common Error:* For `integratedThinking`, ensure `category.type: 'final'` is only used when `thoughtNumber` equals `totalThoughts`.
+* **"Original draft X not found" Errors:** This indicates an issue retrieving draft history. Ensure the SQLite database file path (configured via `MCP_SQLITE_PATH` or the default `data/mcp-thought-server.sqlite`) is correct and the server process has write permissions to that location. Check server logs for database errors. If the database file (`.sqlite`) seems corrupted, deleting it might resolve the issue (but will lose history).
 * **LLM Coherence Check Issues:** If enabled, verify `COHERENCE_API_KEY`, `COHERENCE_CHECK_MODEL`, and `COHERENCE_API_BASE` environment variables are correctly set. Check the status of the external LLM service. Ensure the selected model supports the required structured JSON output format. Check server logs for API errors.
 * **Low Confidence Scores:** May indicate the AI's output is genuinely not relevant (check semantic similarity score component) or not coherent (if LLM check is enabled), or that the `context` provided to the tool was insufficient or poorly defined.
 * **Embedding Model Download Failure:** Ensure an internet connection is available the first time the server runs to download the sentence transformer model. Check permissions for the cache directory (e.g., `~/.cache/huggingface/hub/`).
+* **SQLite Errors:** Check file system permissions for the database file and its directory. Ensure the `sqlite3` native addon built correctly during `npm install` (sometimes requires build tools like Python, C++ compiler).
 * **General:** Check the server's console output (stdout/stderr) for more detailed error messages or logging information.
 
 ## Architecture Overview (Brief)
@@ -218,7 +240,7 @@ npm start
 The server is a Node.js application built with TypeScript. It follows standard MCP server patterns, using the `@modelcontextprotocol/sdk`. Key logic is separated into:
 
 * **Tools (`src/tools/`):** Define MCP tool interfaces (using Zod schemas) and handle request validation/routing.
-* **Services (`src/services/`):** Encapsulate the core logic for each thinking strategy (`sequentialThinking`, `chainOfDraft`, `integratedThinking`).
+* **Services (`src/services/`):** Encapsulate the core logic for each thinking strategy (`sequentialThinking`, `chainOfDraft`, `integratedThinking`) and persistence (`StorageService`).
 * **Configuration (`src/config/`):** Manages settings and environment variables.
 * **Utilities (`src/utils/`):** Shared functions for tasks like logging, embeddings, similarity, and coherence checks.
 * **Types (`src/types/`):** Centralized TypeScript definitions.

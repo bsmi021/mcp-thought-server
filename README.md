@@ -129,7 +129,8 @@ npm test
 # Start the server (runs node build/index.js)
 npm start
 
-# Run in development mode with auto-reloading (uses ts-node-dev)
+# Run in development mode with auto-reloading
+# (Uses cross-env to set LOG_LEVEL=debug for verbose output)
 npm run dev
 ```
 
@@ -147,6 +148,13 @@ To ensure reliable state persistence (like draft history) across requests, espec
   * If not set, defaults to `data/mcp-thought-server.sqlite` relative to the project root. A warning will be logged if the default is used.
   * The directory containing the file will be created automatically if it doesn't exist.
 * **Note:** Ensure the `data/` directory (or the custom directory specified) and `*.sqlite` files are added to your `.gitignore`.
+
+### Logging Verbosity
+
+* `LOG_LEVEL`: (Optional) Controls the minimum level of logs displayed.
+  * Values: `debug`, `info`, `warn`, `error`.
+  * If not set, defaults to `info`.
+  * Example: `LOG_LEVEL=debug npm start` (or use `cross-env` in scripts).
 
 ### Core MCP Connection
 

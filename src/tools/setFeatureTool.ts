@@ -35,7 +35,7 @@ export const setFeatureTool = (server: McpServer): void => {
                 const debugControl = DebugControlService.getInstance();
                 const result = debugControl.setFeature(params.feature, params.enabled);
 
-                logger.info(`Debug feature '${params.feature}' ${params.enabled ? 'enabled' : 'disabled'}`);
+                logger.info('Debug feature status updated', { feature: params.feature, enabled: params.enabled });
 
                 return {
                     content: [{
@@ -44,7 +44,7 @@ export const setFeatureTool = (server: McpServer): void => {
                     }]
                 };
             } catch (error) {
-                logger.error('Error in setFeature tool:', error);
+                logger.error('Error in setFeature tool', error);
 
                 if (error instanceof McpError) {
                     throw error;

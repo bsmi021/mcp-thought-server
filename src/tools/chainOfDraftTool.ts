@@ -70,7 +70,7 @@ export const draftTool = (server: McpServer, storageService: StorageService, con
         TOOL_PARAMS,
         async (args, extra) => { // 'extra' contains MCP context like sessionId
             const sessionId = extra?.sessionId || 'default_session'; // Extract sessionId, provide default
-            logger.info(`Handling chainOfDraftTool request for session: ${sessionId}`); // Log session ID
+            logger.info('Handling chainOfDraftTool request', { sessionId }); // Log session ID
             try {
                 // +++ Pass sessionId to processDraft
                 const result = await processDraft(args, sessionId);
@@ -81,7 +81,7 @@ export const draftTool = (server: McpServer, storageService: StorageService, con
                     }]
                 };
             } catch (error) {
-                logger.error(`Error processing chainOfDraftTool for session ${sessionId}:`, error); // Log error with session ID
+                logger.error('Error processing chainOfDraftTool request', error, { sessionId }); // Log error with session ID
                 if (error instanceof McpError) {
                     throw error;
                 }

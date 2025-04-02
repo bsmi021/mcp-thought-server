@@ -291,7 +291,7 @@ export class SequentialThinkingService {
 
         if (!outputText || contextStrings.length === 0) {
             // +++ LOGGING (Corrected Format)
-            logger.warn('SequentialService: No output text or context strings for relevance calculation.', {
+            logger.warn('SequentialService: No output text or context strings for relevance calculation', { // Removed trailing period
                 outputTextProvided: !!outputText,
                 contextStringsCount: contextStrings.length,
                 contextInput: context // Log the input context object
@@ -299,7 +299,7 @@ export class SequentialThinkingService {
             return 0.4; // Default low score if no text or context
         }
         // +++ LOGGING (Corrected Format)
-        logger.debug('SequentialService: Performing relevance calculation.', {
+        logger.debug('SequentialService: Performing relevance calculation', { // Removed trailing period
             outputTextChars: outputText.length,
             contextStringsCount: contextStrings.length
         });
@@ -310,7 +310,7 @@ export class SequentialThinkingService {
             const contextEmbeddings = await embeddingUtil.generateEmbeddings(contextStrings);
 
             if (!targetEmbedding || !contextEmbeddings) {
-                logger.error('Failed to generate embeddings for relevance calculation.');
+                logger.error('Failed to generate embeddings for relevance calculation'); // Removed trailing period, no error object needed
                 return 0.3; // Return very low score on embedding failure
             }
 
@@ -319,7 +319,7 @@ export class SequentialThinkingService {
             return relevanceScore;
 
         } catch (error) {
-            logger.error('Error calculating semantic relevance:', error);
+            logger.error('Error calculating semantic relevance', error); // Pass error object
             return 0.3; // Return very low score on error
         }
     }
@@ -554,8 +554,9 @@ export class SequentialThinkingService {
             }
 
             // Format and output thought
-            const formattedThought = this.formatThought(validatedInput);
-            logger.error(formattedThought); // Should this be info or debug?
+            // const formattedThought = this.formatThought(validatedInput); // Keep formatting logic if needed elsewhere, but don't log the string
+            // Log the structured data instead
+            logger.debug('Processed thought details', { thoughtData: validatedInput });
 
             // Generate response with enhanced metrics
             // Package the validated data, potentially filtering based on verbosity later
@@ -587,7 +588,7 @@ export class SequentialThinkingService {
                 }]
             };
         } catch (error) {
-            logger.error("Error processing thought:", error); // Log the error
+            logger.error("Error processing thought", error); // Log the error object
             return {
                 content: [{
                     type: "text",
@@ -633,7 +634,7 @@ export class SequentialThinkingService {
             } catch (error) {
                 this.parallelTasks.delete(taskId);
                 // Rethrow or handle error appropriately
-                logger.error(`Parallel thought task ${taskId} failed:`, error);
+                logger.error('Parallel thought task failed', error, { taskId }); // Pass error object and context
                 // Return an error structure consistent with processThought's error return
                 return {
                     content: [{

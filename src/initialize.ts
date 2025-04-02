@@ -58,7 +58,7 @@ export const createServer = async (): Promise<McpServer> => {
 
     // Set up error handler
     server.server.onerror = (error) => {
-        logger.error("MCP server error:", error);
+        logger.error("MCP server error", error); // Pass error object
 
         // Log error to feedback system
         feedbackService.collectFeedback(
@@ -74,7 +74,7 @@ export const createServer = async (): Promise<McpServer> => {
                 context: { timestamp: new Date().toISOString() }
             }
         ).catch(err => {
-            logger.error("Failed to log error to feedback system:", err);
+            logger.error("Failed to log error to feedback system", err); // Pass error object
         });
     }
 
@@ -89,7 +89,7 @@ export const createServer = async (): Promise<McpServer> => {
                     await optimizationService.adjustFeedbackWeights(metrics);
                 }
             } catch (error) {
-                logger.error("Feedback monitoring error:", error);
+                logger.error("Feedback monitoring error", error); // Pass error object
             }
         }, feedbackConfig.monitoring.interval);
 
@@ -110,7 +110,7 @@ export const createServer = async (): Promise<McpServer> => {
                     await prototypingService.benchmarkPrototype(prototype);
                 }
             } catch (error) {
-                logger.error("Prototype benchmarking error:", error);
+                logger.error("Prototype benchmarking error", error); // Pass error object
             }
         }, capabilities.capabilities.prototyping.config.benchmarking.interval);
 
@@ -130,7 +130,7 @@ export const createServer = async (): Promise<McpServer> => {
     server.close = async () => {
         await storageService.close();
         await originalClose.call(server);
-        logger.info("Server and storage service shut down gracefully.");
+        logger.info("Server and storage service shut down gracefully"); // No context needed
     };
 
 

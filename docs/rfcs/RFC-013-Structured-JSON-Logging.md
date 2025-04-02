@@ -1,3 +1,36 @@
+# RFC-013: Structured JSON Logging
+
+* **Status**: Proposed
+* **Date**: 2025-04-01
+* **Author**: Cline
+* **Related Issues**: (User Request)
+
+## Summary
+
+This RFC proposes replacing the current string-based logging utility in `src/utils/logging.ts` with a new implementation that outputs structured JSON logs to `stderr`. This aligns with best practices for server logging, improving parseability and monitoring capabilities.
+
+## Motivation
+
+The current logging implementation outputs simple prefixed strings (e.g., `[INFO] message`) to `stderr`. While functional and configurable by `LOG_LEVEL`, this format has drawbacks:
+
+* **Difficult Parsing**: String logs are harder for automated log aggregation and analysis tools to parse reliably compared to JSON.
+* **Limited Context**: It's cumbersome to include rich, structured context (like request IDs, parameters, state) alongside log messages.
+* **Inconsistent Error Handling**: Error objects are not consistently formatted or included in a structured way.
+
+Adopting a structured JSON logging pattern, as provided in the initial request, addresses these issues by:
+
+* Ensuring logs are easily machine-readable.
+* Providing a standard way to include arbitrary context via a `context` object.
+* Properly formatting `Error` objects, including stack traces and potential custom details.
+* Maintaining the separation of application logs (`stderr`) from MCP protocol messages (`stdout`).
+
+## Proposed Implementation
+
+### 1. Update `src/utils/logger.ts`
+
+The entire content of `src/utils/logging.ts` will be replaced with the following implementation (based on the user-provided pattern):
+
+```typescript
 /**
  * Simple structured logger utility that writes JSON to stderr.
  */
@@ -122,3 +155,66 @@ export const logger = {
         writeLog(LogLevel.ERROR, message, context, error);
     },
 };
+
+```
+
+### 2. Update Existing Logger Calls
+
+All existing calls to `logger.debug`, `logger.info`, `logger.warn`, and `logger.error` throughout the `src/` directory must be updated to match the new function signatures.
+
+**Example Changes:**
+
+```typescript
+// --- Before ---
+
+// Simple message
+logger.info("Server starting...");
+
+// Message with unstructured args
+const toolName = 'sequentialThinking';
+logger.debug(`Handling tool: ${toolName}`, someVariable);
+
+// Error logging
+try {
+  // ... some operation ...
+} catch (err) {
+  logger.error("Operation failed:", err, { requestId: '123' }); // Incorrect arg order/structure
+}
+
+
+// --- After ---
+
+// Simple message (no change needed for info/debug/warn if no context)
+logger.info("Server starting...");
+
+// Message with structured context
+const toolName = 'sequentialThinking';
+logger.debug(`Handling tool`, { tool: toolName, otherData: someVariable }); // Context object
+
+// Error logging (Corrected)
+try {
+  // ... some operation ...
+} catch (err) {
+  // Pass error object as second arg, context as third
+  logger.error("Operation failed", err, { requestId: '123' });
+}
+```
+
+This refactoring will involve searching the codebase for `logger.` calls and adjusting the arguments accordingly.
+
+## Impact
+
+* **Log Format Change**: Log output will change from prefixed strings to single-line JSON objects written to `stderr`. Any existing log parsing or monitoring setups might need adjustment.
+* **Improved Debugging**: Structured context and error details will significantly aid in debugging and tracing requests.
+* **Code Modification**: Requires modifying `logger.ts` and potentially numerous call sites throughout the `src/` directory.
+
+## Alternatives Considered
+
+* **Keep Current Logger**: Rejected because it lacks structured context and proper error formatting, hindering effective monitoring and debugging.
+* **Use External Logging Library (e.g., Pino, Winston)**: Considered, but the provided simple implementation is sufficient for the current needs, avoids adding external dependencies, and directly addresses the requirements.
+
+## Next Steps
+
+1. Approve this RFC.
+2. Implement the changes described above (in ACT MODE).
+3. Update Memory Bank (`activeContext.md`, `progress.md`) after implementation.

@@ -43,17 +43,21 @@ export class CoherenceCheckerUtil {
                     baseURL: baseURL, // If undefined, the library uses the default OpenAI URL
                     defaultHeaders: Object.keys(defaultHeaders).length > 0 ? defaultHeaders : undefined,
                 });
-                logger.info(`LLM Coherence Checker enabled. Model: ${this.model}, Endpoint: ${baseURL || 'Default OpenAI'}`);
+                // CHANGE 1: logger.info with context
+                logger.info('LLM Coherence Checker enabled', { model: this.model, endpoint: baseURL || 'Default OpenAI' });
                 if (Object.keys(defaultHeaders).length > 0) {
-                    logger.info(`Using default headers: ${JSON.stringify(defaultHeaders)}`);
+                    // CHANGE 2: logger.info with context
+                    logger.info('Using default headers', { headers: defaultHeaders });
                 }
             } catch (error) {
-                logger.error('Failed to initialize OpenAI client for coherence check:', error);
+                // CHANGE 3: logger.error with error object
+                logger.error('Failed to initialize OpenAI client for coherence check', error);
                 this.openai = null;
                 this.enabled = false; // Disable if client fails to init
             }
         } else {
             this.model = 'N/A'; // Set a default value when disabled
+            // CHANGE 4: logger.info without context (no change needed in signature)
             logger.info('LLM Coherence Checker disabled (COHERENCE_API_KEY or COHERENCE_CHECK_MODEL not set).');
         }
     }
@@ -110,7 +114,9 @@ export class CoherenceCheckerUtil {
 
             // +++ Add check for choices array +++
             if (!response.choices || response.choices.length === 0) {
-                logger.info(`LLM coherence check response: ${JSON.stringify(response)}`);
+                // CHANGE 5: logger.info with context (stringified response)
+                logger.info('LLM coherence check raw response', { response: JSON.stringify(response) });
+                // CHANGE 6: logger.warn with context
                 logger.warn('LLM coherence check response missing choices array. Using default score.', { response });
                 return this.defaultScore;
             }
@@ -118,6 +124,7 @@ export class CoherenceCheckerUtil {
 
             const content = response.choices[0]?.message?.content;
             if (!content) {
+                // CHANGE 7: logger.warn without context
                 logger.warn('LLM coherence check returned null/empty content in message. Using default score.');
                 return this.defaultScore;
             }
@@ -127,14 +134,17 @@ export class CoherenceCheckerUtil {
                 if (typeof parsed.rating === 'number' && parsed.rating >= 1 && parsed.rating <= 5) {
                     // Normalize 1-5 rating to 0-1 scale
                     const normalizedScore = (parsed.rating - 1) / 4;
-                    logger.debug(`LLM Coherence Check successful. Rating: ${parsed.rating}, Normalized: ${normalizedScore}`);
+                    // CHANGE 8: logger.debug with context
+                    logger.debug('LLM Coherence Check successful', { rating: parsed.rating, normalizedScore });
                     return normalizedScore;
                 } else {
-                    logger.warn(`LLM coherence check returned invalid rating: ${parsed.rating}. Using default score.`);
+                    // CHANGE 9: logger.warn with context
+                    logger.warn('LLM coherence check returned invalid rating. Using default score.', { rating: parsed.rating });
                     return this.defaultScore;
                 }
             } catch (parseError) {
-                logger.warn(`LLM coherence check failed to parse JSON response: "${content}". Error: ${parseError}. Using default score.`);
+                // CHANGE 10: logger.warn with context and error object (Corrected: error goes in context)
+                logger.warn('LLM coherence check failed to parse JSON response. Using default score.', { responseContent: content, error: parseError instanceof Error ? { message: parseError.message, stack: parseError.stack } : parseError });
                 return this.defaultScore;
             }
 
@@ -156,7 +166,8 @@ export class CoherenceCheckerUtil {
             } else {
                 errorDetails = { message: String(apiError) };
             }
-            logger.error('LLM coherence check API call failed. Using default score.', { error: errorDetails });
+            // CHANGE 11: logger.error with context (errorDetails is already structured)
+            logger.error('LLM coherence check API call failed. Using default score.', apiError, { errorDetails });
             return this.defaultScore;
         }
     }

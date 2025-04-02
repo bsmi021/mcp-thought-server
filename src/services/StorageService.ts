@@ -15,13 +15,15 @@ export class StorageService {
     constructor() {
         const envPath = process.env.MCP_SQLITE_PATH;
         if (!envPath) {
-            logger.warn(`MCP_SQLITE_PATH environment variable not set. Using default path: ${DEFAULT_DB_PATH}`);
+            // Corrected logger.warn
+            logger.warn('MCP_SQLITE_PATH environment variable not set. Using default path.', { defaultPath: DEFAULT_DB_PATH });
             this.dbPath = path.resolve(process.cwd(), DEFAULT_DB_PATH);
         } else {
             // Resolve relative to CWD if not absolute
             this.dbPath = path.resolve(process.cwd(), envPath);
         }
-        logger.info(`StorageService configured with database path: ${this.dbPath}`);
+        // Corrected logger.info
+        logger.info('StorageService configured', { dbPath: this.dbPath });
     }
 
     /**
@@ -33,14 +35,16 @@ export class StorageService {
             // Ensure the directory exists
             const dir = path.dirname(this.dbPath);
             await fs.mkdir(dir, { recursive: true });
-            logger.debug(`Ensured directory exists: ${dir}`);
+            // Corrected logger.debug
+            logger.debug('Ensured directory exists', { directory: dir });
 
             // Open the database connection
             this.db = await open({
                 filename: this.dbPath,
                 driver: sqlite3.Database
             });
-            logger.info(`SQLite database connected successfully at ${this.dbPath}`);
+            // Corrected logger.info
+            logger.info('SQLite database connected successfully', { dbPath: this.dbPath });
 
             // Create the drafts table if it doesn't exist
             await this.db.exec(`
@@ -54,16 +58,21 @@ export class StorageService {
             `);
             // Consider adding indexes later if performance becomes an issue
             // await this.db.exec(`CREATE INDEX IF NOT EXISTS idx_drafts_session ON drafts (sessionId);`);
-            logger.info(`Table 'drafts' initialized successfully.`);
+            // Corrected logger.info
+            logger.info("Table 'drafts' initialized successfully.");
 
         } catch (error) {
-            logger.error(`Failed to initialize database at ${this.dbPath}:`, error);
+            // Corrected logger.error
+            logger.error('Failed to initialize database', error, { dbPath: this.dbPath });
             throw error; // Re-throw to prevent service usage without DB
         }
     }
 
     private ensureDbConnected(): NonNullable<typeof this.db> {
         if (!this.db) {
+            // This error should ideally use the logger too, but it might happen before logger is fully reliable
+            // Or if the logger itself depends on something that failed during init.
+            // Throwing a standard Error here is acceptable.
             throw new Error("Database not initialized. Call initialize() first.");
         }
         return this.db;
@@ -83,9 +92,11 @@ export class StorageService {
                 draft.draftNumber,
                 jsonData
             );
-            logger.debug(`[${sessionId}] Draft ${draft.draftNumber} saved successfully.`);
+            // Corrected logger.debug
+            logger.debug('Draft saved successfully', { sessionId, draftNumber: draft.draftNumber });
         } catch (error) {
-            logger.error(`[${sessionId}] Failed to save draft ${draft.draftNumber}:`, error);
+            // Corrected logger.error
+            logger.error('Failed to save draft', error, { sessionId, draftNumber: draft.draftNumber });
             throw error;
         }
     }
@@ -103,14 +114,17 @@ export class StorageService {
             );
 
             if (row) {
-                logger.debug(`[${sessionId}] Draft ${draftNumber} retrieved successfully.`);
+                // Corrected logger.debug
+                logger.debug('Draft retrieved successfully', { sessionId, draftNumber });
                 return JSON.parse(row.jsonData) as DraftData;
             } else {
-                logger.debug(`[${sessionId}] Draft ${draftNumber} not found.`);
+                // Corrected logger.debug
+                logger.debug('Draft not found', { sessionId, draftNumber });
                 return undefined;
             }
         } catch (error) {
-            logger.error(`[${sessionId}] Failed to retrieve draft ${draftNumber}:`, error);
+            // Corrected logger.error
+            logger.error('Failed to retrieve draft', error, { sessionId, draftNumber });
             throw error;
         }
     }
@@ -129,11 +143,13 @@ export class StorageService {
                 limit
             )) as unknown as Array<{ jsonData: string }>; // Force cast
 
-            logger.debug(`[${sessionId}] Retrieved ${rows.length} recent drafts (limit ${limit}).`);
+            // Corrected logger.debug
+            logger.debug('Retrieved recent drafts', { sessionId, count: rows.length, limit });
             // Type assertion for row in map should be okay now
             return rows.map((row: { jsonData: string }) => JSON.parse(row.jsonData) as DraftData);
         } catch (error) {
-            logger.error(`[${sessionId}] Failed to retrieve recent drafts:`, error);
+            // Corrected logger.error
+            logger.error('Failed to retrieve recent drafts', error, { sessionId, limit });
             throw error;
         }
     }
@@ -146,9 +162,11 @@ export class StorageService {
             try {
                 await this.db.close();
                 this.db = null;
-                logger.info(`SQLite database connection closed for ${this.dbPath}`);
+                // Corrected logger.info
+                logger.info('SQLite database connection closed', { dbPath: this.dbPath });
             } catch (error) {
-                logger.error(`Failed to close database connection for ${this.dbPath}:`, error);
+                // Corrected logger.error
+                logger.error('Failed to close database connection', error, { dbPath: this.dbPath });
                 throw error;
             }
         }

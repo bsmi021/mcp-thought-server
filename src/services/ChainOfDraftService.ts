@@ -39,13 +39,13 @@ export class ChainOfDraftService {
 
     public async processDraft(input: unknown, sessionId: string): Promise<DraftData> {
         const draftInput = input as Partial<DraftData>;
-        logger.debug(JSON.stringify({
-            message: `[${sessionId}] processDraft ENTRY`,
+        // CHANGE 1: logger.debug with context
+        logger.debug('processDraft ENTRY', {
             sessionId: sessionId,
             draftNumber: draftInput.draftNumber,
             isRevision: draftInput.isRevision,
             revisesDraft: draftInput.revisesDraft
-        }));
+        });
 
         const startTime = Date.now();
         try {
@@ -53,16 +53,19 @@ export class ChainOfDraftService {
             this.updateProcessingState('drafting');
             const processedDraft = await this.handleDraftProcessing(validatedInput, sessionId);
             await this.storageService.setDraft(sessionId, processedDraft);
-            logger.debug(`[${sessionId}] Draft ${processedDraft.draftNumber} saved via StorageService.`);
+            // CHANGE 2: logger.debug with context
+            logger.debug('Draft saved via StorageService', { sessionId, draftNumber: processedDraft.draftNumber });
             this.updateMetricsCache(processedDraft);
             if (this.debugConfig.metricTracking) {
                 this.lastProcessingTime = Date.now() - startTime;
                 this.updateMetrics(startTime);
             }
-            logger.info(`[${sessionId}] Processing complete.`);
+            // CHANGE 3: logger.info with context
+            logger.info('Processing complete', { sessionId });
             return processedDraft;
         } catch (error) {
-            logger.error(`[${sessionId}] Error during processing:`, error);
+            // CHANGE 4: logger.error with error and context
+            logger.error('Error during processing', error, { sessionId });
             this.handleError(error);
             throw error;
         }
@@ -85,9 +88,11 @@ export class ChainOfDraftService {
         let processedDraft: DraftData;
         if (draft.isRevision && draft.revisesDraft) {
             const targetDraftNum = draft.revisesDraft;
-            logger.debug(`[${sessionId}] handleDraftProcessing: Is revision, attempting to get original draft ${targetDraftNum} via StorageService.`);
+            // CHANGE 5: logger.debug with context
+            logger.debug('handleDraftProcessing: Is revision, attempting to get original draft via StorageService', { sessionId, targetDraftNum });
             const originalDraft = await this.storageService.getDraft(sessionId, targetDraftNum);
-            logger.debug(`[${sessionId}] handleDraftProcessing: Result of get draft ${targetDraftNum}: ${originalDraft ? 'Found' : 'Not Found'}`);
+            // CHANGE 6: logger.debug with context
+            logger.debug('handleDraftProcessing: Result of get draft', { sessionId, targetDraftNum, found: !!originalDraft });
             if (!originalDraft) throw new Error(`[${sessionId}] Original draft ${targetDraftNum} not found in storage for this session.`);
             processedDraft = await this.processDraftRevision(draft, originalDraft, sessionId);
         } else {
@@ -99,13 +104,15 @@ export class ChainOfDraftService {
             if (previousDraft?.confidence) {
                 const minExpectedConfidence = previousDraft.confidence + this.config.minConfidenceGrowth;
                 if (processedDraft.confidence && processedDraft.confidence < minExpectedConfidence) {
-                    logger.debug(`[${sessionId}] Confidence adjusted for growth: ${processedDraft.confidence} -> ${minExpectedConfidence}`);
+                    // CHANGE 7: logger.debug with context
+                    logger.debug('Confidence adjusted for growth', { sessionId, oldConfidence: processedDraft.confidence, newConfidence: minExpectedConfidence });
                     processedDraft.confidence = minExpectedConfidence;
                 }
             }
         }
         if (processedDraft.confidence && processedDraft.confidence < this.config.confidenceThreshold) {
-            logger.debug(`[${sessionId}] Confidence adjusted for threshold: ${processedDraft.confidence} -> ${this.config.confidenceThreshold}`);
+            // CHANGE 8: logger.debug with context
+            logger.debug('Confidence adjusted for threshold', { sessionId, oldConfidence: processedDraft.confidence, newConfidence: this.config.confidenceThreshold });
             processedDraft.confidence = this.config.confidenceThreshold;
         }
         return processedDraft;
@@ -282,13 +289,15 @@ export class ChainOfDraftService {
     private handleError(error: unknown): void {
         if (!this.debugConfig.errorCapture) return;
         const errorDetails = { timestamp: Date.now(), error: error instanceof Error ? error.message : 'Unknown error', state: this.processingState };
-        logger.error('Chain of Draft Error:', errorDetails);
+        // CHANGE 9: logger.error with error object and context
+        logger.error('Chain of Draft Error', error, { errorDetails });
     }
 
     private updateMetrics(startTime: number): void {
         const processingTime = Date.now() - startTime;
         if (this.debugConfig.performanceMonitoring) {
-            logger.debug('Instance Processing metrics:', { time: processingTime, memory: process.memoryUsage(), state: this.processingState });
+            // CHANGE 10: logger.debug with context, removed colon
+            logger.debug('Instance Processing metrics', { time: processingTime, memory: process.memoryUsage(), state: this.processingState });
         }
     }
 
@@ -367,8 +376,10 @@ export class ChainOfDraftService {
         const context = draft.context || {};
         const contextStrings = [context.problemScope, ...(context.constraints || []), ...(context.assumptions || [])]
             .filter((s): s is string => typeof s === 'string' && s.trim() !== '');
-        logger.debug('CoD calculateContextRelevance received:', { hasOutputText: !!outputText, contextObject: context, contextStringsCalculated: contextStrings });
+        // CHANGE 11: logger.debug with context, removed colon
+        logger.debug('CoD calculateContextRelevance received', { hasOutputText: !!outputText, contextObject: context, contextStringsCalculated: contextStrings });
         if (!outputText || contextStrings.length === 0) {
+            // CHANGE 12: logger.warn without context
             logger.warn('No output text or context strings for relevance calculation in CoD.');
             return 0.4;
         }
@@ -377,13 +388,15 @@ export class ChainOfDraftService {
             const targetEmbedding = await embeddingUtil.generateEmbedding(outputText);
             const contextEmbeddings = await embeddingUtil.generateEmbeddings(contextStrings);
             if (!targetEmbedding || !contextEmbeddings) {
+                // CHANGE 13: logger.error without error object
                 logger.error('Failed to generate embeddings for CoD relevance calculation.');
                 return 0.3;
             }
             const relevanceScore = calculateRelevanceScore(targetEmbedding, contextEmbeddings);
             return isNaN(relevanceScore) ? 0.4 : relevanceScore;
         } catch (error) {
-            logger.error('Error calculating semantic relevance in CoD:', error);
+            // CHANGE 14: logger.error with error object
+            logger.error('Error calculating semantic relevance in CoD', error);
             return 0.3;
         }
     }

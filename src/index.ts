@@ -119,9 +119,9 @@ const main = async () => {
         const server = await createServer();
         const transport = new StdioServerTransport();
         await server.connect(transport);
-        logger.info("MCP Thought Server connected via stdio."); // Add confirmation log
+        logger.info("MCP Thought Server connected via stdio"); // Removed period, no context needed
     } catch (error) {
-        logger.error("Failed to initialize or start server:", error); // More specific error
+        logger.error("Failed to initialize or start server", error); // Pass error object
     }
 }
 

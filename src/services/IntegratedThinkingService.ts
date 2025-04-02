@@ -122,7 +122,7 @@ export class IntegratedThinkingService {
     }
 
     private handleIntegrationError(error: unknown): void {
-        logger.error(`Integration Error during phase: ${this.processingState.currentPhase}`, error);
+        logger.error('Integration Error', error, { phase: this.processingState.currentPhase });
         this.metrics.mcpIntegrationMetrics.failures++;
         this.metrics.mcpIntegrationMetrics.lastError = error instanceof Error ? error.message : String(error);
         this.processingState.currentPhase = 'error';
@@ -160,7 +160,7 @@ export class IntegratedThinkingService {
     }
 
     private logMetrics(): void {
-        logger.debug('Integrated Processing metrics:', {
+        logger.debug('Integrated Processing metrics', { // Removed trailing colon
             time: Date.now() - this.metrics.startTime,
             memory: process.memoryUsage(),
             state: this.processingState,
@@ -192,10 +192,10 @@ export class IntegratedThinkingService {
         this.updateProcessingState('processing');
 
         try {
-            logger.info(`[${sessionId}] processIntegratedThought: Starting...`);
+            logger.info('processIntegratedThought: Starting', { sessionId });
 
             // Sequential Thinking Call
-            logger.info(`[${sessionId}] Calling sequentialService.processThought...`);
+            logger.info('Calling sequentialService.processThought', { sessionId });
             const sequentialResultObject = await this.sequentialService.processThought({
                 thought: input.content,
                 thoughtNumber: input.thoughtNumber,
@@ -205,14 +205,14 @@ export class IntegratedThinkingService {
                 ...(input.revisesDraft ? { revisesThought: input.revisesDraft } : {}),
                 context: input.context
             });
-            logger.info(`[${sessionId}] sequentialService.processThought completed.`);
+            logger.info('sequentialService.processThought completed', { sessionId });
             if (sequentialResultObject.isError || !sequentialResultObject.content?.length) {
                 throw new Error(`Sequential thinking service failed: ${sequentialResultObject.content?.[0]?.text || 'Unknown error'}`);
             }
             const sequentialOutput = JSON.parse(sequentialResultObject.content[0].text) as SequentialThoughtData;
 
             // Chain of Draft Call
-            logger.info(`[${sessionId}] Calling draftService.processDraft...`);
+            logger.info('Calling draftService.processDraft', { sessionId });
             const draftResult = await this.draftService.processDraft({
                 content: input.content,
                 draftNumber: input.draftNumber,
@@ -227,7 +227,7 @@ export class IntegratedThinkingService {
                 category: input.category, // Pass category from input
                 context: input.context
             }, sessionId);
-            logger.info(`[${sessionId}] draftService.processDraft completed.`);
+            logger.info('draftService.processDraft completed', { sessionId });
 
             // Enhancements & Confidence
             const mcpEnhancements = await this.generateMCPEnhancements(sequentialOutput, draftResult, input.mcpFeatures);
@@ -242,7 +242,7 @@ export class IntegratedThinkingService {
             else if (input.isCritique) { finalCategoryType = 'critique'; }
             // Ensure 'final' type is only set if thoughtNumber matches totalThoughts
             if (finalCategoryType === 'final' && input.thoughtNumber !== input.totalThoughts) {
-                logger.warn(`[${sessionId}] Correcting category: 'final' used prematurely (thought ${input.thoughtNumber}/${input.totalThoughts}). Setting to 'revision' or 'critique'.`);
+                logger.warn('Correcting category: \'final\' used prematurely. Setting to intermediate.', { sessionId, thoughtNumber: input.thoughtNumber, totalThoughts: input.totalThoughts });
                 finalCategoryType = input.thoughtNumber % 2 === 0 ? 'critique' : 'revision'; // Revert to intermediate
             }
             const finalCategory: IntegratedResult['category'] = { type: finalCategoryType, confidence: mcpEnhancements.confidence };
@@ -420,7 +420,8 @@ export class IntegratedThinkingService {
             const relevanceScore = calculateRelevanceScore(targetEmbedding, contextEmbeddings);
             return isNaN(relevanceScore) ? 0.4 : relevanceScore;
         } catch (error) {
-            logger.error('Error calculating integrated semantic relevance:', error);
+            // Add context object here
+            logger.error('Error calculating integrated semantic relevance', error, { sequentialThought: sequentialResult.thought, draftContent: draftResult.content });
             return 0.3;
         }
     }

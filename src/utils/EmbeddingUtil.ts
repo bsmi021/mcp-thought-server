@@ -29,16 +29,16 @@ export class EmbeddingUtil {
             // TODO: Add 'embeddingModel' to config types and ConfigurationManager
             // const modelName = configManager.getCoreConfig().embeddingModel || 'Xenova/all-MiniLM-L6-v2';
             const modelName = 'Xenova/all-MiniLM-L6-v2'; // Hardcoded for now, replace with config access
-            logger.info(`Loading embedding model: ${modelName}... (This may take time on first run)`);
+            logger.info('Loading embedding model', { modelName });
 
             // Specify the task and model
             // Type assertion needed as pipeline() return type is broad
             const extractorPipeline = await pipeline('feature-extraction', modelName) as EmbeddingPipeline;
 
-            logger.info(`Embedding model ${modelName} loaded successfully.`);
+            logger.info('Embedding model loaded successfully', { modelName });
             return extractorPipeline;
         } catch (error) {
-            logger.error('Failed to load embedding model:', error);
+            logger.error('Failed to load embedding model', error);
             // Return null or throw error depending on desired handling
             // Returning null allows graceful degradation if embedding fails
             return null;
@@ -63,7 +63,7 @@ export class EmbeddingUtil {
     public async generateEmbedding(text: string): Promise<number[] | null> {
         const extractor = await this.extractor;
         if (!extractor || !text) {
-            logger.warn('Embedding model not available or text is empty.');
+            logger.warn('Embedding model not available or text is empty');
             return null;
         }
 
@@ -74,7 +74,7 @@ export class EmbeddingUtil {
             // Convert Float32Array to a regular number array
             return Array.from(output.data as Float32Array);
         } catch (error) {
-            logger.error('Error generating single embedding:', error);
+            logger.error('Error generating single embedding', error);
             return null;
         }
     }
@@ -87,7 +87,7 @@ export class EmbeddingUtil {
     public async generateEmbeddings(texts: string[]): Promise<number[][] | null> {
         const extractor = await this.extractor;
         if (!extractor || !texts || texts.length === 0) {
-            logger.warn('Embedding model not available or texts array is empty.');
+            logger.warn('Embedding model not available or texts array is empty');
             return null;
         }
 
@@ -117,12 +117,12 @@ export class EmbeddingUtil {
                 }
                 return embeddings;
             } else {
-                logger.error('Unexpected output format from batch embedding generation.');
+                logger.error('Unexpected output format from batch embedding generation');
                 return null;
             }
 
         } catch (error) {
-            logger.error('Error generating batch embeddings:', error);
+            logger.error('Error generating batch embeddings', error);
             return null;
         }
     }

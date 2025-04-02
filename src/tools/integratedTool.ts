@@ -68,7 +68,7 @@ export const integratedTool = (server: McpServer, storageService: StorageService
 
             // Log parameter processing if debug is enabled
             if (config?.debugConfig?.metricTracking) {
-                logger.debug('Integrated thinking parameter processing:', {
+                logger.debug('Integrated thinking parameter processing', {
                     original: input,
                     processed: processedInput
                 });
@@ -184,7 +184,7 @@ export const integratedTool = (server: McpServer, storageService: StorageService
         TOOL_PARAMS,
         async (args, extra) => { // 'extra' contains MCP context like sessionId
             const sessionId = extra?.sessionId || 'default_session'; // Extract sessionId, provide default
-            logger.info(`Handling integratedTool request for session: ${sessionId}`); // Log session ID
+            logger.info('Handling integratedTool request', { sessionId }); // Log session ID
             try {
                 // +++ Pass sessionId to processIntegrated
                 const result = await processIntegrated(args, sessionId);
@@ -195,7 +195,7 @@ export const integratedTool = (server: McpServer, storageService: StorageService
                     }]
                 };
             } catch (error) {
-                logger.error(`Error processing integratedTool for session ${sessionId}:`, error); // Log error with session ID
+                logger.error('Error processing integratedTool request', error, { sessionId }); // Log error with session ID
                 if (error instanceof McpError) {
                     throw error;
                 }
